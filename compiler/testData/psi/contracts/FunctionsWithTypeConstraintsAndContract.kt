@@ -4,7 +4,7 @@
 fun someFunctionWithTypeConstraints<T, E>(arg: E?, block: () -> T): String
     contract [
         returns() implies (arg != null),
-        callsInPlace(block, EXACTLY_ONCE),
+        callsInPlace(block, InvocationKind.EXACTLY_ONCE),
     ]
     where T : MyClass,
           E : MyOtherClass
@@ -14,15 +14,16 @@ fun someFunctionWithTypeConstraints<T, E>(arg: E?, block: () -> T): String
     return "some string"
 }
 
-fun anotherFunctionWithTypeConstraints<D, T>(data: D?, arg: T?, block: () -> Unit)
-    where D : SuperType,
-          T : SomeType
+fun anotherFunctionWithTypeConstraints<T, E>(arg: E?, block: () -> T): String
+    where T : MyClass,
+          E : MyOtherClass
     contract [
-        returns() implies (data != null),
-        returns() implies (arg != null)
+        returns() implies (arg != null),
+        callsInPlace(block, InvocationKind.EXACTLY_ONCE),
+        someComplexContract(arg, block)
     ]
 {
-    require(data != null)
-    require(arg != null)
     block()
+    arg ?: throw NullArgumentException()
+    return "some string"
 }

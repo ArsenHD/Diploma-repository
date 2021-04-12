@@ -1285,6 +1285,16 @@ public class ParsingTestGenerated extends AbstractParsingTest {
                 KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler/testData/psi/contracts"), Pattern.compile("^(.*)\\.kts?$"), null, true);
             }
 
+            @TestMetadata("ContractFunctionDeclaration.kt")
+            public void testContractFunctionDeclaration() throws Exception {
+                runTest("compiler/testData/psi/contracts/ContractFunctionDeclaration.kt");
+            }
+
+            @TestMetadata("ContractFunctionMultilineDeclaration.kt")
+            public void testContractFunctionMultilineDeclaration() throws Exception {
+                runTest("compiler/testData/psi/contracts/ContractFunctionMultilineDeclaration.kt");
+            }
+
             @TestMetadata("FunctionWithMultilineContract.kt")
             public void testFunctionWithMultilineContract() throws Exception {
                 runTest("compiler/testData/psi/contracts/FunctionWithMultilineContract.kt");
@@ -1298,6 +1308,11 @@ public class ParsingTestGenerated extends AbstractParsingTest {
             @TestMetadata("PropertyAccessorsContracts.kt")
             public void testPropertyAccessorsContracts() throws Exception {
                 runTest("compiler/testData/psi/contracts/PropertyAccessorsContracts.kt");
+            }
+
+            @TestMetadata("SimpleContractWithContractFunction.kt")
+            public void testSimpleContractWithContractFunction() throws Exception {
+                runTest("compiler/testData/psi/contracts/SimpleContractWithContractFunction.kt");
             }
 
             @TestMetadata("SimpleFunctionWithContract.kt")
