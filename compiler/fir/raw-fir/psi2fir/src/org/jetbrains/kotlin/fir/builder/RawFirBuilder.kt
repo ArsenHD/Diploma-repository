@@ -1114,6 +1114,7 @@ open class RawFirBuilder(
 
             val labelName: String?
             val functionIsAnonymousFunction = function.name == null && !function.parent.let { it is KtFile || it is KtClassBody }
+            val hasModifierContractKeyword = function.hasModifier(CONTRACT_KEYWORD)
             val functionBuilder = if (functionIsAnonymousFunction) {
                 FirAnonymousFunctionBuilder().apply {
                     receiverTypeRef = receiverType
@@ -1141,6 +1142,7 @@ open class RawFirBuilder(
                         isTailRec = function.hasModifier(TAILREC_KEYWORD)
                         isExternal = function.hasModifier(EXTERNAL_KEYWORD)
                         isSuspend = function.hasModifier(SUSPEND_KEYWORD)
+                        isContract = hasModifierContractKeyword
                     }
                 }
             }
@@ -1166,16 +1168,24 @@ open class RawFirBuilder(
                 else
                     listOf()
                 withCapturedTypeParameters(true, actualTypeParameters) {
-                    val outerContractDescription = function.obtainContractDescription()
-                    val bodyWithContractDescription = function.buildFirBody()
-                    this.body = bodyWithContractDescription.first
-                    val contractDescription = outerContractDescription ?: bodyWithContractDescription.second
-                    contractDescription?.let {
-                        // TODO: add error reporting for contracts on lambdas
-                        if (this is FirSimpleFunctionBuilder) {
-                            this.contractDescription = it
+                        if (hasModifierContractKeyword) {
+                        function.obtainContractDescription()?.let {
+                            if (this is FirSimpleFunctionBuilder) {
+                                this.contractDescription = it
+                            }
                         }
-                    }
+                    } else { // if the function is a contract function then it isn't allowed to have a contract
+                        val outerContractDescription = function.obtainContractDescription()
+                        val bodyWithContractDescription = function.buildFirBody()
+                        this.body = bodyWithContractDescription.first
+                        val contractDescription = outerContractDescription ?: bodyWithContractDescription.second
+                        contractDescription?.let {
+                            // TODO: add error reporting for contracts on lambdas
+                            if (this is FirSimpleFunctionBuilder) {
+                                this.contractDescription = it
+                            }
+                        }
+                            }
                 }
                 context.firFunctionTargets.removeLast()
             }.build().also {
