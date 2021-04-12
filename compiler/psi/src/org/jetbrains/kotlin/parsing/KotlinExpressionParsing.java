@@ -1043,34 +1043,30 @@ public class KotlinExpressionParsing extends AbstractKotlinParsing {
         }
     }
 
-    public void parseContractDescriptionBlock() {
-        assert _at(CONTRACT_KEYWORD);
+    public boolean parseContractEffectList() {
+        assert _at(LBRACKET);
 
-        advance(); // CONTRACT_KEYWORD
+        PsiBuilder.Marker contractsList = mark();
 
-        parseContractEffectList();
-    }
+        myBuilder.disableNewlines();
+        advance(); // LBRACKET
 
-    private void parseContractEffectList() {
-        PsiBuilder.Marker block = mark();
-
-        expect(LBRACKET, "Expecting '['");
-        myBuilder.enableNewlines();
-
-        parseContractEffects();
+        parseContractEffectListElements();
 
         expect(RBRACKET, "Expecting ']'");
         myBuilder.restoreNewlinesState();
 
-        block.done(CONTRACT_EFFECT_LIST);
+        contractsList.done(CONTRACT_EFFECT_LIST);
+        return true;
     }
 
-    private void parseContractEffects() {
+    private void parseContractEffectListElements() {
         while (true) {
-            if (at(COMMA)) errorAndAdvance("Expecting a contract effect");
+            if (at(COMMA)) errorAndAdvance("Expecting an element");
             if (at(RBRACKET)) {
                 break;
             }
+
             PsiBuilder.Marker effect = mark();
             parseExpression();
             effect.done(CONTRACT_EFFECT);
@@ -1079,6 +1075,43 @@ public class KotlinExpressionParsing extends AbstractKotlinParsing {
             advance(); // COMMA
         }
     }
+
+    //public void parseContractDescriptionBlock() {
+    //    assert _at(CONTRACT_KEYWORD);
+    //
+    //    advance(); // CONTRACT_KEYWORD
+    //
+    //    parseContractEffectList();
+    //}
+
+    //private void parseContractEffectList() {
+    //    PsiBuilder.Marker block = mark();
+    //
+    //    expect(LBRACKET, "Expecting '['");
+    //    myBuilder.enableNewlines();
+    //
+    //    parseContractEffects();
+    //
+    //    expect(RBRACKET, "Expecting ']'");
+    //    myBuilder.restoreNewlinesState();
+    //
+    //    block.done(CONTRACT_EFFECT_LIST);
+    //}
+
+    //private void parseContractEffects() {
+    //    while (true) {
+    //        if (at(COMMA)) errorAndAdvance("Expecting a contract effect");
+    //        if (at(RBRACKET)) {
+    //            break;
+    //        }
+    //        PsiBuilder.Marker effect = mark();
+    //        parseExpression();
+    //        effect.done(CONTRACT_EFFECT);
+    //
+    //        if (!at(COMMA)) break;
+    //        advance(); // COMMA
+    //    }
+    //}
 
     /*
      * SimpleName
@@ -1373,7 +1406,9 @@ public class KotlinExpressionParsing extends AbstractKotlinParsing {
         if (failIfDefinitelyNotExpression) {
             if (keywordToken != FUN_KEYWORD) return null;
 
-            return myKotlinParsing.parseFunction(/* failIfIdentifierExists = */ true);
+            boolean isContractFunction = modifierDetector.isContractDetected();
+
+            return myKotlinParsing.parseFunction(/* failIfIdentifierExists = */ true, isContractFunction);
         }
 
         if (keywordToken == OBJECT_KEYWORD) {
