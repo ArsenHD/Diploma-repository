@@ -284,5 +284,6 @@ internal fun <T : FirContractDescriptionOwner> obtainResolvedContractDescription
                 }
             }
         }
+        source = owner.contractDescription.source
     }
 }

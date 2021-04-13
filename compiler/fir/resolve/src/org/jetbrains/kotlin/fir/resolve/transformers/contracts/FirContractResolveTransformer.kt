@@ -27,6 +27,9 @@ import org.jetbrains.kotlin.fir.resolve.diagnostics.ConeContractDescriptionError
 import org.jetbrains.kotlin.fir.resolve.transformers.body.resolve.BodyResolveContext
 import org.jetbrains.kotlin.fir.resolve.transformers.body.resolve.FirBodyResolveTransformer
 import org.jetbrains.kotlin.fir.resolve.transformers.body.resolve.FirDeclarationsResolveTransformer
+import org.jetbrains.kotlin.fir.resolve.transformers.obtainResolvedContractDescription
+import org.jetbrains.kotlin.fir.resolve.transformers.wrapEffectsInContractCall
+import org.jetbrains.kotlin.fir.visitors.*
 import org.jetbrains.kotlin.fir.symbols.impl.FirAnonymousFunctionSymbol
 import org.jetbrains.kotlin.fir.types.builder.buildImplicitTypeRef
 import org.jetbrains.kotlin.fir.visitors.transformSingle
@@ -114,7 +117,12 @@ open class FirContractResolveTransformer(
             dataFlowAnalyzer.enterContractDescription()
             return when (val contractDescription = owner.contractDescription) {
                 is FirLegacyRawContractDescription -> transformLegacyRawContractDescriptionOwner(owner, contractDescription)
-                is FirRawContractDescription -> transformRawContractDescriptionOwner(owner, contractDescription)
+                is FirRawContractDescription -> {
+                    wrapEffectsInContractCall(session, owner, contractDescription)
+                    val legacyRawContractDescription = owner.contractDescription as? FirLegacyRawContractDescription
+                        ?: return transformOwnerOfErrorContract(owner)
+                    transformLegacyRawContractDescriptionOwner(owner, legacyRawContractDescription)
+                }
                 else -> throw IllegalArgumentException("$owner has a contract description of an unknown type")
             }
         }
@@ -135,18 +143,13 @@ open class FirContractResolveTransformer(
             val lambdaBody = (argument.expression as FirAnonymousFunctionExpression).anonymousFunction.body
                 ?: return transformOwnerOfErrorContract(owner)
 
-            val resolvedContractDescription = buildResolvedContractDescription {
-                val effectExtractor = ConeEffectExtractor(session, owner, valueParameters)
-                for (statement in lambdaBody.statements) {
-                    val effect = statement.accept(effectExtractor, null) as? ConeEffectDeclaration
-                    if (effect == null) {
-                        unresolvedEffects += statement
-                    } else {
-                        effects += effect.toFirEffectDeclaration(statement.source)
-                    }
-                }
-                this.source = owner.contractDescription.source
-            }
+            val resolvedContractDescription = obtainResolvedContractDescription(
+                session,
+                transformer,
+                owner,
+                valueParameters,
+                lambdaBody
+            )
             owner.replaceContractDescription(resolvedContractDescription)
             dataFlowAnalyzer.exitContractDescription()
             return owner
