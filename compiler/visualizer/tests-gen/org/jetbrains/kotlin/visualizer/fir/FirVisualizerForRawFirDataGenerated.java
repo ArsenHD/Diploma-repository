@@ -238,6 +238,12 @@ public class FirVisualizerForRawFirDataGenerated extends AbstractFirVisualizerTe
                 }
 
                 @Test
+                @TestMetadata("contractFunctionsDeclaration.kt")
+                public void testContractFunctionsDeclaration() throws Exception {
+                    runTest("compiler/fir/raw-fir/psi2fir/testData/rawBuilder/declarations/contracts/newSyntax/contractFunctionsDeclaration.kt");
+                }
+
+                @Test
                 @TestMetadata("functionWithBothOldAndNewSyntaxContractDescription.kt")
                 public void testFunctionWithBothOldAndNewSyntaxContractDescription() throws Exception {
                     runTest("compiler/fir/raw-fir/psi2fir/testData/rawBuilder/declarations/contracts/newSyntax/functionWithBothOldAndNewSyntaxContractDescription.kt");

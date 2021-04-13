@@ -1,0 +1,17 @@
+FILE: contractFunctionsDeclaration.kt
+    public? final? contract fun <T> notNullIfReturns(arg: T?): R|kotlin/Unit|
+        [Contract description] <
+            returns#().implies#(!=(arg#, Null(null)))
+        >
+
+    public? final? contract fun callsInPlaceOnce(block: ( () -> Unit )): R|kotlin/Unit|
+        [Contract description] <
+            callsInPlace#(block#, EXACTLY_ONCE#)
+        >
+
+    public? final? contract fun <T> complexContract(arg: T?, block: ( () -> Unit )): R|kotlin/Unit|
+        [Contract description] <
+            notNullIfReturns#(arg#),
+            callsInPlaceOnce#(block#),
+            returnsNotNull#()
+        >

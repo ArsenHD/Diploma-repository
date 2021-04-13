@@ -220,6 +220,11 @@ public class RawFirBuilderLazyBodiesTestCaseGenerated extends AbstractRawFirBuil
                     KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler/fir/raw-fir/psi2fir/testData/rawBuilder/declarations/contracts/newSyntax"), Pattern.compile("^(.+)\\.kt$"), null, true);
                 }
 
+                @TestMetadata("contractFunctionsDeclaration.kt")
+                public void testContractFunctionsDeclaration() throws Exception {
+                    runTest("compiler/fir/raw-fir/psi2fir/testData/rawBuilder/declarations/contracts/newSyntax/contractFunctionsDeclaration.kt");
+                }
+
                 @TestMetadata("functionWithBothOldAndNewSyntaxContractDescription.kt")
                 public void testFunctionWithBothOldAndNewSyntaxContractDescription() throws Exception {
                     runTest("compiler/fir/raw-fir/psi2fir/testData/rawBuilder/declarations/contracts/newSyntax/functionWithBothOldAndNewSyntaxContractDescription.kt");
