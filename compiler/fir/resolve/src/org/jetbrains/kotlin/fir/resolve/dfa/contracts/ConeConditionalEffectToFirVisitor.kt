@@ -6,6 +6,8 @@
 package org.jetbrains.kotlin.fir.resolve.dfa.contracts
 
 import org.jetbrains.kotlin.fir.contracts.description.*
+import org.jetbrains.kotlin.fir.declarations.FirContractFunction
+import org.jetbrains.kotlin.fir.declarations.FirFunction
 import org.jetbrains.kotlin.fir.declarations.FirSimpleFunction
 import org.jetbrains.kotlin.fir.expressions.*
 import org.jetbrains.kotlin.fir.expressions.builder.*
@@ -100,16 +102,29 @@ fun createArgumentsMapping(qualifiedAccess: FirQualifiedAccess): Map<Int, FirExp
         ?: qualifiedAccess.dispatchReceiver.takeIf { it != FirNoReceiverExpression }?.let { argumentsMapping[-1] = it }
     when (qualifiedAccess) {
         is FirFunctionCall -> {
-            val function = qualifiedAccess.toResolvedCallableSymbol()?.fir as? FirSimpleFunction ?: return null
-            val parameterToIndex = function.valueParameters.mapIndexed { index, parameter -> parameter to index }.toMap()
-            val callArgumentMapping = qualifiedAccess.argumentMapping ?: return null
-            for (argument in qualifiedAccess.arguments) {
-                argumentsMapping[parameterToIndex.getValue(callArgumentMapping.getValue(argument))] = argument.unwrapArgument()
+            val function = qualifiedAccess.toResolvedCallableSymbol()?.fir
+            return when (function) {
+                is FirContractFunction -> getArgumentsToParametersMapping(function, qualifiedAccess, argumentsMapping)
+                is FirSimpleFunction -> getArgumentsToParametersMapping(function, qualifiedAccess, argumentsMapping)
+                else -> null
             }
         }
         is FirVariableAssignment -> {
             argumentsMapping[0] = qualifiedAccess.rValue
         }
+    }
+    return argumentsMapping
+}
+
+private fun getArgumentsToParametersMapping(
+    function: FirFunction<*>,
+    functionCall: FirFunctionCall,
+    argumentsMapping: MutableMap<Int, FirExpression>
+): Map<Int, FirExpression>? {
+    val parameterToIndex = function.valueParameters.mapIndexed { index, parameter -> parameter to index }.toMap()
+    val callArgumentMapping = functionCall.argumentMapping ?: return null
+    for (argument in functionCall.arguments) {
+        argumentsMapping[parameterToIndex.getValue(callArgumentMapping.getValue(argument))] = argument.unwrapArgument()
     }
     return argumentsMapping
 }

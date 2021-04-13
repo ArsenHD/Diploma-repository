@@ -288,6 +288,13 @@ open class FirBodyResolveTransformer(
         return declarationsTransformer.transformSimpleFunction(simpleFunction, data)
     }
 
+    override fun transformContractFunction(
+        contractFunction: FirContractFunction,
+        data: ResolutionMode
+    ): FirDeclaration {
+        return declarationsTransformer.transformContractFunction(contractFunction, data)
+    }
+
     override fun transformFunction(
         function: FirFunction,
         data: ResolutionMode

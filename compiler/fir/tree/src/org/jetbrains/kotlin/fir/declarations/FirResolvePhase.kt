@@ -16,6 +16,7 @@ enum class FirResolvePhase(val pluginPhase: Boolean = false, val noProcessor: Bo
     EXTENSION_STATUS_UPDATE(pluginPhase = true),
     STATUS,
     ARGUMENTS_OF_ANNOTATIONS,
+    CONTRACT_FUNCTIONS,
     CONTRACTS,
     NEW_MEMBERS_GENERATION(pluginPhase = true),
     IMPLICIT_TYPES_BODY_RESOLVE,
