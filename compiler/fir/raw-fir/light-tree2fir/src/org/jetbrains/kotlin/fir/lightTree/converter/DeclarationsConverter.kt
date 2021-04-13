@@ -1468,6 +1468,7 @@ class DeclarationsConverter(
                     isTailRec = modifiers.hasTailrec()
                     isExternal = modifiers.hasExternal()
                     isSuspend = modifiers.hasSuspend()
+                    isContract = modifiers.hasContract()
                 }
 
                 symbol = functionSymbol
@@ -1496,14 +1497,22 @@ class DeclarationsConverter(
             withCapturedTypeParameters(true, actualTypeParameters) {
                 valueParametersList?.let { list -> valueParameters += convertValueParameters(list).map { it.firValueParameter } }
 
-                val hasContractEffectList = outerContractDescription != null
-                val bodyWithContractDescription = convertFunctionBody(block, expression, hasContractEffectList)
-                this.body = bodyWithContractDescription.first
-                val contractDescription = outerContractDescription ?: bodyWithContractDescription.second
-                contractDescription?.let {
-                    // TODO: add error reporting for contracts on lambdas
-                    if (this is FirSimpleFunctionBuilder) {
-                        this.contractDescription = it
+                if (modifiers.hasContract()) { // if the function is a contract function
+                    outerContractDescription?.let {
+                        if (this is FirSimpleFunctionBuilder) {
+                            contractDescription = it
+                        }
+                    }
+                } else {
+                    val hasContractEffectList = outerContractDescription != null
+                    val bodyWithContractDescription = convertFunctionBody(block, expression, hasContractEffectList)
+                    this.body = bodyWithContractDescription.first
+                    val contractDescription = outerContractDescription ?: bodyWithContractDescription.second
+                    contractDescription?.let {
+                        // TODO: add error reporting for contracts on lambdas
+                        if (this is FirSimpleFunctionBuilder) {
+                            this.contractDescription = it
+                        }
                     }
                 }
             }

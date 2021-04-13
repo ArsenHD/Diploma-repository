@@ -46,7 +46,8 @@ enum class ModifierFlag(val value: Long) {
     VARIANCE_IN(1L shl 33),
     VARIANCE_OUT(1L shl 34),
     VARIANCE_INVARIANT(1L shl 35),
-    REIFICATION_REIFIED(1L shl 36);
+    REIFICATION_REIFIED(1L shl 36),
+    CONTRACT(1L shl 37);
 
     companion object {
         val Values = values()

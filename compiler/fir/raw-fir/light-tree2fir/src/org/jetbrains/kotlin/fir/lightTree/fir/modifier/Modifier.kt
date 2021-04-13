@@ -72,6 +72,8 @@ open class Modifier(var modifiers: Long = ModifierFlag.NONE.value) {
 
     fun hasSuspend(): Boolean = hasFlag(ModifierFlag.FUNCTION_SUSPEND)
 
+    fun hasContract(): Boolean = hasFlag(ModifierFlag.CONTRACT)
+
     fun isConst(): Boolean = hasFlag(ModifierFlag.PROPERTY_CONST)
 
     fun hasModality(modality: Modality): Boolean {
