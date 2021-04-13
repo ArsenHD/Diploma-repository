@@ -37,6 +37,10 @@ open class FirNamedFunctionSymbol(
     callableId: CallableId,
 ) : FirFunctionSymbol<FirSimpleFunction>(callableId)
 
+open class FirContractFunctionSymbol(
+    callableId: CallableId,
+) : FirFunctionSymbol<FirContractFunction>(callableId)
+
 interface FirIntersectionCallableSymbol {
     val intersections: Collection<FirCallableSymbol<*>>
 }
