@@ -1114,37 +1114,63 @@ open class RawFirBuilder(
 
             val labelName: String?
             val functionIsAnonymousFunction = function.name == null && !function.parent.let { it is KtFile || it is KtClassBody }
-            val hasModifierContractKeyword = function.hasModifier(CONTRACT_KEYWORD)
-            val functionBuilder = if (functionIsAnonymousFunction) {
-                FirAnonymousFunctionBuilder().apply {
-                    receiverTypeRef = receiverType
-                    symbol = FirAnonymousFunctionSymbol()
-                    isLambda = false
-                    labelName = function.getLabelName() ?: context.calleeNamesForLambda.lastOrNull()?.identifier
-                }
-            } else {
-                FirSimpleFunctionBuilder().apply {
-                    receiverTypeRef = receiverType
-                    name = function.nameAsSafeName
-                    labelName = runIf(!name.isSpecial) { name.identifier }
-                    symbol = FirNamedFunctionSymbol(callableIdForName(function.nameAsSafeName))
-                    dispatchReceiverType = currentDispatchReceiverType()
-                    status = FirDeclarationStatusImpl(
-                        if (function.isLocal) Visibilities.Local else function.visibility,
-                        function.modality,
-                    ).apply {
-                        isExpect = function.hasExpectModifier() || context.containerIsExpect
-                        isActual = function.hasActualModifier()
-                        isOverride = function.hasModifier(OVERRIDE_KEYWORD)
-                        isOperator = function.hasModifier(OPERATOR_KEYWORD)
-                        isInfix = function.hasModifier(INFIX_KEYWORD)
-                        isInline = function.hasModifier(INLINE_KEYWORD)
-                        isTailRec = function.hasModifier(TAILREC_KEYWORD)
-                        isExternal = function.hasModifier(EXTERNAL_KEYWORD)
-                        isSuspend = function.hasModifier(SUSPEND_KEYWORD)
-                        isContract = hasModifierContractKeyword
+            val functionIsContractFunction = function.hasModifier(CONTRACT_KEYWORD)
+            val functionBuilder = when {
+                functionIsAnonymousFunction -> {
+                    FirAnonymousFunctionBuilder().apply {
+                        receiverTypeRef = receiverType
+                        symbol = FirAnonymousFunctionSymbol()
+                        isLambda = false
+                        labelName = function.getLabelName() ?: context.calleeNamesForLambda.lastOrNull()?.identifier
                     }
                 }
+                functionIsContractFunction -> {
+                    FirContractFunctionBuilder().apply {
+                        receiverTypeRef = receiverType
+                        name = function.nameAsSafeName
+                        labelName = runIf(!name.isSpecial) { name.identifier }
+                        symbol = FirContractFunctionSymbol(callableIdForName(function.nameAsSafeName))
+                        status = FirDeclarationStatusImpl(
+                            if (function.isLocal) Visibilities.Local else function.visibility,
+                            function.modality,
+                        ).apply {
+                            isExpect = function.hasExpectModifier() || context.containerIsExpect
+                            isActual = function.hasActualModifier()
+                            isOverride = function.hasModifier(OVERRIDE_KEYWORD)
+                            isOperator = function.hasModifier(OPERATOR_KEYWORD)
+                            isInfix = function.hasModifier(INFIX_KEYWORD)
+                            isInline = function.hasModifier(INLINE_KEYWORD)
+                            isTailRec = function.hasModifier(TAILREC_KEYWORD)
+                            isExternal = function.hasModifier(EXTERNAL_KEYWORD)
+                            isSuspend = function.hasModifier(SUSPEND_KEYWORD)
+                            isContract = function.hasModifier(CONTRACT_KEYWORD)
+                        }
+                    }
+                }
+                else -> {
+                    FirSimpleFunctionBuilder().apply {
+                        receiverTypeRef = receiverType
+                        name = function.nameAsSafeName
+                        labelName = runIf(!name.isSpecial) { name.identifier }
+                        symbol = FirNamedFunctionSymbol(callableIdForName(function.nameAsSafeName))
+                        dispatchReceiverType = currentDispatchReceiverType()
+                        status = FirDeclarationStatusImpl(
+                            if (function.isLocal) Visibilities.Local else function.visibility,
+                            function.modality,
+                        ).apply {
+                            isExpect = function.hasExpectModifier() || context.containerIsExpect
+                            isActual = function.hasActualModifier()
+                            isOverride = function.hasModifier(OVERRIDE_KEYWORD)
+                            isOperator = function.hasModifier(OPERATOR_KEYWORD)
+                            isInfix = function.hasModifier(INFIX_KEYWORD)
+                            isInline = function.hasModifier(INLINE_KEYWORD)
+                            isTailRec = function.hasModifier(TAILREC_KEYWORD)
+                            isExternal = function.hasModifier(EXTERNAL_KEYWORD)
+                            isSuspend = function.hasModifier(SUSPEND_KEYWORD)
+                            isContract = function.hasModifier(CONTRACT_KEYWORD)
+                        }
+                    }
+ }
             }
 
             val target = FirFunctionTarget(labelName, isLambda = false)
@@ -1153,26 +1179,30 @@ open class RawFirBuilder(
                 source = functionSource
                 moduleData = baseModuleData
                 origin = FirDeclarationOrigin.Source
-                returnTypeRef = returnType
+                returnTypeRef = if (this is FirContractFunctionBuilder) {
+                    implicitUnitType // contract functions have return type Unit
+                } else {
+                    returnType
+                }
 
                 context.firFunctionTargets += target
                 function.extractAnnotationsTo(this)
-                if (this is FirSimpleFunctionBuilder) {
-                    function.extractTypeParametersTo(this, symbol)
+                when (this) {
+                    is FirSimpleFunctionBuilder -> function.extractTypeParametersTo(this, symbol)
+                    is FirContractFunctionBuilder -> function.extractTypeParametersTo(this, symbol)
                 }
                 for (valueParameter in function.valueParameters) {
                     valueParameters += valueParameter.convert<FirValueParameter>()
                 }
-                val actualTypeParameters = if (this is FirSimpleFunctionBuilder)
-                    this.typeParameters
-                else
-                    listOf()
+                val actualTypeParameters = when (this) {
+                    is FirSimpleFunctionBuilder -> this.typeParameters
+                    is FirContractFunctionBuilder -> this.typeParameters
+                    else -> listOf()
+                }
                 withCapturedTypeParameters(true, actualTypeParameters) {
-                        if (hasModifierContractKeyword) {
+                    if (this is FirContractFunctionBuilder) {
                         function.obtainContractDescription()?.let {
-                            if (this is FirSimpleFunctionBuilder) {
-                                this.contractDescription = it
-                            }
+                            this.contractDescription = it
                         }
                     } else { // if the function is a contract function then it isn't allowed to have a contract
                         val outerContractDescription = function.obtainContractDescription()

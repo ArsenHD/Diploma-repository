@@ -42,6 +42,7 @@ inline val FirMemberDeclaration.isInline: Boolean get() = status.isInline
 inline val FirMemberDeclaration.isTailRec: Boolean get() = status.isTailRec
 inline val FirMemberDeclaration.isExternal: Boolean get() = status.isExternal
 inline val FirMemberDeclaration.isSuspend: Boolean get() = status.isSuspend
+inline val FirMemberDeclaration.isContract: Boolean get() = status.isContract
 inline val FirMemberDeclaration.isConst: Boolean get() = status.isConst
 inline val FirMemberDeclaration.isLateInit: Boolean get() = status.isLateInit
 inline val FirMemberDeclaration.isFromSealedClass: Boolean get() = status.isFromSealedClass
