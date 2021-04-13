@@ -636,7 +636,7 @@ abstract class FirTransformer<in D> : FirVisitor<FirElement, D>() {
         return transformElement(contractFunction, data)
     }
 
-    open fun transformEffectDeclaration(effectDeclaration: FirEffectDeclaration, data: D): FirEffectDeclaration {
+    open fun transformEffectDeclaration(effectDeclaration: FirEffectDeclaration, data: D): FirStatement {
         return transformElement(effectDeclaration, data)
     }
 
@@ -1152,7 +1152,7 @@ abstract class FirTransformer<in D> : FirVisitor<FirElement, D>() {
         return transformContractFunction(contractFunction, data)
     }
 
-    final override fun visitEffectDeclaration(effectDeclaration: FirEffectDeclaration, data: D): FirEffectDeclaration {
+    final override fun visitEffectDeclaration(effectDeclaration: FirEffectDeclaration, data: D): FirStatement {
         return transformEffectDeclaration(effectDeclaration, data)
     }
 

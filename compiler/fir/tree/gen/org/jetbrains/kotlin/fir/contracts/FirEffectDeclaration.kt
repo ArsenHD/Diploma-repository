@@ -6,9 +6,11 @@
 package org.jetbrains.kotlin.fir.contracts
 
 import org.jetbrains.kotlin.fir.FirElement
-import org.jetbrains.kotlin.fir.FirPureAbstractElement
 import org.jetbrains.kotlin.fir.FirSourceElement
 import org.jetbrains.kotlin.fir.contracts.description.ConeEffectDeclaration
+import org.jetbrains.kotlin.fir.expressions.FirAnnotationCall
+import org.jetbrains.kotlin.fir.expressions.FirExpression
+import org.jetbrains.kotlin.fir.types.FirTypeRef
 import org.jetbrains.kotlin.fir.visitors.*
 
 /*
@@ -16,13 +18,19 @@ import org.jetbrains.kotlin.fir.visitors.*
  * DO NOT MODIFY IT MANUALLY
  */
 
-abstract class FirEffectDeclaration : FirPureAbstractElement(), FirElement {
+abstract class FirEffectDeclaration : FirExpression() {
     abstract override val source: FirSourceElement?
+    abstract override val typeRef: FirTypeRef
+    abstract override val annotations: List<FirAnnotationCall>
     abstract val effect: ConeEffectDeclaration
 
     override fun <R, D> accept(visitor: FirVisitor<R, D>, data: D): R = visitor.visitEffectDeclaration(this, data)
 
     @Suppress("UNCHECKED_CAST")
-    override fun <E: FirElement, D> transform(transformer: FirTransformer<D>, data: D): E = 
+    override fun <E: FirElement, D> transform(transformer: FirTransformer<D>, data: D): E =
         transformer.transformEffectDeclaration(this, data) as E
+
+    abstract override fun replaceTypeRef(newTypeRef: FirTypeRef)
+
+    abstract override fun <D> transformAnnotations(transformer: FirTransformer<D>, data: D): FirEffectDeclaration
 }
