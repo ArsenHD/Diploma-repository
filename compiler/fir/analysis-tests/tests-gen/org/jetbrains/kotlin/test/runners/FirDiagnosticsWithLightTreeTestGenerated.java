@@ -4846,6 +4846,24 @@ public class FirDiagnosticsWithLightTreeTestGenerated extends AbstractFirDiagnos
                             }
 
                             @Test
+                            @TestMetadata("contractFunctionCalls.kt")
+                            public void testContractFunctionCalls() throws Exception {
+                                runTest("compiler/fir/analysis-tests/testData/resolveWithStdlib/contracts/fromSource/good/variousContracts/newSyntax/contractFunctionCalls.kt");
+                            }
+
+                            @Test
+                            @TestMetadata("contractFunctionCallsComplexCase.kt")
+                            public void testContractFunctionCallsComplexCase() throws Exception {
+                                runTest("compiler/fir/analysis-tests/testData/resolveWithStdlib/contracts/fromSource/good/variousContracts/newSyntax/contractFunctionCallsComplexCase.kt");
+                            }
+
+                            @Test
+                            @TestMetadata("contractFunctionDeclarations.kt")
+                            public void testContractFunctionDeclarations() throws Exception {
+                                runTest("compiler/fir/analysis-tests/testData/resolveWithStdlib/contracts/fromSource/good/variousContracts/newSyntax/contractFunctionDeclarations.kt");
+                            }
+
+                            @Test
                             @TestMetadata("functionsWithContract.kt")
                             public void testFunctionsWithContract() throws Exception {
                                 runTest("compiler/fir/analysis-tests/testData/resolveWithStdlib/contracts/fromSource/good/variousContracts/newSyntax/functionsWithContract.kt");
