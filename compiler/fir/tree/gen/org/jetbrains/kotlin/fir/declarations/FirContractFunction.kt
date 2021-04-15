@@ -6,14 +6,13 @@
 package org.jetbrains.kotlin.fir.declarations
 
 import org.jetbrains.kotlin.fir.FirElement
-import org.jetbrains.kotlin.fir.FirPureAbstractElement
 import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.FirSourceElement
 import org.jetbrains.kotlin.fir.contracts.FirContractDescription
 import org.jetbrains.kotlin.fir.expressions.FirAnnotationCall
 import org.jetbrains.kotlin.fir.expressions.FirBlock
 import org.jetbrains.kotlin.fir.references.FirControlFlowGraphReference
-import org.jetbrains.kotlin.fir.symbols.impl.FirFunctionSymbol
+import org.jetbrains.kotlin.fir.symbols.impl.FirNamedFunctionSymbol
 import org.jetbrains.kotlin.fir.types.ConeKotlinType
 import org.jetbrains.kotlin.fir.types.FirTypeRef
 import org.jetbrains.kotlin.name.Name
@@ -25,7 +24,7 @@ import org.jetbrains.kotlin.fir.visitors.*
  * DO NOT MODIFY IT MANUALLY
  */
 
-abstract class FirContractFunction : FirPureAbstractElement(), FirFunction<FirContractFunction>, FirCallableMemberDeclaration<FirContractFunction>, FirContractDescriptionOwner, FirTypeParametersOwner {
+abstract class FirContractFunction : FirSimpleFunction() {
     abstract override val source: FirSourceElement?
     abstract override val session: FirSession
     abstract override val resolvePhase: FirResolvePhase
@@ -40,8 +39,8 @@ abstract class FirContractFunction : FirPureAbstractElement(), FirFunction<FirCo
     abstract override val containerSource: DeserializedContainerSource?
     abstract override val dispatchReceiverType: ConeKotlinType?
     abstract override val contractDescription: FirContractDescription
-    abstract val name: Name
-    abstract override val symbol: FirFunctionSymbol<FirContractFunction>
+    abstract override val name: Name
+    abstract override val symbol: FirNamedFunctionSymbol
     abstract override val annotations: List<FirAnnotationCall>
     abstract override val typeParameters: List<FirTypeParameter>
 

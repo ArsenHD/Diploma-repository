@@ -309,15 +309,6 @@ object NodeConfigurator : AbstractFieldConfigurator<FirTreeBuilder>(FirTreeBuild
             +typeParameters
         }
 
-        contractFunction.configure {
-            parentArg(function, "F", contractFunction)
-            parentArg(callableMemberDeclaration, "F", contractFunction)
-            +name
-            +symbol("FirFunctionSymbol<FirContractFunction>")
-            +annotations
-            +typeParameters
-        }
-
         contractDescriptionOwner.configure {
             +field(contractDescription, withReplace = true).withTransform()
         }
