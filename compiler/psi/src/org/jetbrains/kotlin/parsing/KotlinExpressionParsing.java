@@ -1009,7 +1009,30 @@ public class KotlinExpressionParsing extends AbstractKotlinParsing {
         parseAsCollectionLiteralExpression(COLLECTION_LITERAL_EXPRESSION, true, "Expecting an element");
     }
 
-    private void parseAsCollectionLiteralExpression(IElementType nodeType, boolean canBeEmpty, String missingElementErrorMessage) {
+    public boolean parseContractEffectList() {
+        if (at(LBRACKET)) {
+            parseAsCollectionLiteralExpression(
+                    CONTRACT_EFFECT_LIST,
+                    false,
+                    "Expecting a contract effect",
+                    CONTRACT_EFFECT
+            );
+            return true;
+        }
+        error("Expecting '['");
+        return false;
+    }
+
+    public void parseAsCollectionLiteralExpression(IElementType nodeType, boolean canBeEmpty, String missingElementErrorMessage) {
+        parseAsCollectionLiteralExpression(nodeType, canBeEmpty, missingElementErrorMessage, null);
+    }
+
+    public void parseAsCollectionLiteralExpression(
+            IElementType nodeType,
+            boolean canBeEmpty,
+            String missingElementErrorMessage,
+            IElementType elementWrapper
+    ) {
         assert _at(LBRACKET);
 
         PsiBuilder.Marker innerExpressions = mark();
@@ -1021,7 +1044,7 @@ public class KotlinExpressionParsing extends AbstractKotlinParsing {
             error(missingElementErrorMessage);
         }
         else {
-            parseInnerExpressions(missingElementErrorMessage);
+            parseInnerExpressions(missingElementErrorMessage, elementWrapper);
         }
 
         expect(RBRACKET, "Expecting ']'");
@@ -1030,88 +1053,25 @@ public class KotlinExpressionParsing extends AbstractKotlinParsing {
         innerExpressions.done(nodeType);
     }
 
-    private void parseInnerExpressions(String missingElementErrorMessage) {
+    private void parseInnerExpressions(String missingElementErrorMessage, IElementType elementWrapper) {
         while (true) {
             if (at(COMMA)) errorAndAdvance(missingElementErrorMessage);
             if (at(RBRACKET)) {
                 break;
             }
-            parseExpression();
 
-            if (!at(COMMA)) break;
-            advance(); // COMMA
-        }
-    }
-
-    public boolean parseContractEffectList() {
-        assert _at(LBRACKET);
-
-        PsiBuilder.Marker contractsList = mark();
-
-        myBuilder.disableNewlines();
-        advance(); // LBRACKET
-
-        parseContractEffectListElements();
-
-        expect(RBRACKET, "Expecting ']'");
-        myBuilder.restoreNewlinesState();
-
-        contractsList.done(CONTRACT_EFFECT_LIST);
-        return true;
-    }
-
-    private void parseContractEffectListElements() {
-        while (true) {
-            if (at(COMMA)) errorAndAdvance("Expecting an element");
-            if (at(RBRACKET)) {
-                break;
+            if (elementWrapper != null) {
+                PsiBuilder.Marker wrapper = mark();
+                parseExpression();
+                wrapper.done(elementWrapper);
+            } else {
+                parseExpression();
             }
 
-            PsiBuilder.Marker effect = mark();
-            parseExpression();
-            effect.done(CONTRACT_EFFECT);
-
             if (!at(COMMA)) break;
             advance(); // COMMA
         }
     }
-
-    //public void parseContractDescriptionBlock() {
-    //    assert _at(CONTRACT_KEYWORD);
-    //
-    //    advance(); // CONTRACT_KEYWORD
-    //
-    //    parseContractEffectList();
-    //}
-
-    //private void parseContractEffectList() {
-    //    PsiBuilder.Marker block = mark();
-    //
-    //    expect(LBRACKET, "Expecting '['");
-    //    myBuilder.enableNewlines();
-    //
-    //    parseContractEffects();
-    //
-    //    expect(RBRACKET, "Expecting ']'");
-    //    myBuilder.restoreNewlinesState();
-    //
-    //    block.done(CONTRACT_EFFECT_LIST);
-    //}
-
-    //private void parseContractEffects() {
-    //    while (true) {
-    //        if (at(COMMA)) errorAndAdvance("Expecting a contract effect");
-    //        if (at(RBRACKET)) {
-    //            break;
-    //        }
-    //        PsiBuilder.Marker effect = mark();
-    //        parseExpression();
-    //        effect.done(CONTRACT_EFFECT);
-    //
-    //        if (!at(COMMA)) break;
-    //        advance(); // COMMA
-    //    }
-    //}
 
     /*
      * SimpleName

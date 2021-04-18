@@ -1669,10 +1669,12 @@ public class KotlinParsing extends AbstractKotlinParsing {
         }
 
         if (isContractFunction) {
-            assert _at(EQ);
-            advance(); // EQ
-
-            myExpressionParsing.parseContractEffectList();
+            if (at(EQ)) {
+                advance(); // EQ
+                myExpressionParsing.parseContractEffectList();
+            } else {
+                error("Expecting '='");
+            }
         } else {
 
             if (at(COLON)) {
