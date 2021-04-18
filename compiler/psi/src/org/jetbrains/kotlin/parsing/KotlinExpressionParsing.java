@@ -381,6 +381,10 @@ public class KotlinExpressionParsing extends AbstractKotlinParsing {
 
         advance(); // COLONCOLON
 
+        return parseClassLiteralExpression(expression) || parseCallableReferenceExpression(expression);
+    }
+
+    private boolean parseClassLiteralExpression(@NotNull PsiBuilder.Marker expression) {
         if (at(CLASS_KEYWORD)) {
             advance(); // CLASS_KEYWORD
 
@@ -388,6 +392,10 @@ public class KotlinExpressionParsing extends AbstractKotlinParsing {
             return true;
         }
 
+        return false;
+    }
+
+    private boolean parseCallableReferenceExpression(@NotNull PsiBuilder.Marker expression) {
         parseSimpleNameExpression();
 
         if (at(LT)) {
@@ -1021,6 +1029,19 @@ public class KotlinExpressionParsing extends AbstractKotlinParsing {
         }
         error("Expecting '['");
         return false;
+    }
+
+    public void parseRefinedTypeConstraintsList() {
+        if (at(LBRACKET)) {
+            parseAsCollectionLiteralExpression(
+                    REFINED_TYPE_CONSTRAINT_LIST,
+                    false,
+                    "Expecting a refined type constraint",
+                    REFINED_TYPE_CONSTRAINT
+            );
+        } else {
+            error("Expecting '['");
+        }
     }
 
     public void parseAsCollectionLiteralExpression(IElementType nodeType, boolean canBeEmpty, String missingElementErrorMessage) {

@@ -117,8 +117,14 @@ public interface KtStubElementTypes {
     KtPlaceHolderStubElementType<KtContractEffectList> CONTRACT_EFFECT_LIST =
             new KtContractEffectListElementType("CONTRACT_EFFECT_LIST");
 
+    KtPlaceHolderStubElementType<KtRefinedTypeConstraintList> REFINED_TYPE_CONSTRAINT_LIST =
+            new KtRefinedTypeConstraintListElementType("REFINED_TYPE_CONSTRAINT_LIST");
+
     KtContractEffectElementType CONTRACT_EFFECT =
             new KtContractEffectElementType("CONTRACT_EFFECT", KtContractEffect.class);
+
+    KtRefinedTypeConstraintElementType REFINED_TYPE_CONSTRAINT =
+            new KtRefinedTypeConstraintElementType("REFINED_TYPE_CONSTRAINT", KtRefinedTypeConstraint.class);
 
     KtValueArgumentElementType<KtLambdaArgument> LAMBDA_ARGUMENT =
             new KtValueArgumentElementType<>("LAMBDA_ARGUMENT", KtLambdaArgument.class);

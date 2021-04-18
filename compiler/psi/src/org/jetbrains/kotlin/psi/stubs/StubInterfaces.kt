@@ -71,6 +71,8 @@ interface KotlinValueArgumentStub<T : KtValueArgument> : KotlinPlaceHolderStub<T
 
 interface KotlinContractEffectStub : KotlinPlaceHolderStub<KtContractEffect> {}
 
+interface KotlinRefinedTypeConstraintStub : KotlinPlaceHolderStub<KtRefinedTypeConstraint> {}
+
 interface KotlinAnnotationEntryStub : StubElement<KtAnnotationEntry> {
     fun getShortName(): String?
     fun hasValueArguments(): Boolean

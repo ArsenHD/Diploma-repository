@@ -1297,7 +1297,7 @@ public class KotlinParsing extends AbstractKotlinParsing {
 
     /*
      * typeAlias
-     *   : modifiers "typealias" SimpleName typeParameters? "=" type
+     *   : modifiers "typealias" SimpleName typeParameters? "=" type refinedTypeConstraints?
      *   ;
      */
     private IElementType parseTypeAlias() {
@@ -1319,9 +1319,44 @@ public class KotlinParsing extends AbstractKotlinParsing {
 
         parseTypeRef();
 
+        parseRefinedTypeConstraints();
+
         consumeIf(SEMICOLON);
 
         return TYPEALIAS;
+    }
+
+    /*
+     * refinedTypeConstraints
+     *   : "satisfies" constraintsList
+     *   ;
+     *
+     * constraintsList
+     *   : "[" constraint{","}? "]"
+     *   ;
+     *
+     * constraint
+     *   : callableReferenceExpression
+     *   ;
+     *
+     * callableReferenceExpression
+     *   : "::" SimpleName
+     *   ;
+     */
+    private void parseRefinedTypeConstraints() {
+        if (!at(SATISFIES_KEYWORD)) return;
+
+        advance(); // SATISFIES_KEYWORD
+
+        if (at(LBRACKET)) {
+            myExpressionParsing.parseRefinedTypeConstraintsList();
+        } else {
+            PsiBuilder.Marker constraintsList = mark();
+            PsiBuilder.Marker constraint = mark();
+            myExpressionParsing.parseExpression();
+            constraint.done(REFINED_TYPE_CONSTRAINT);
+            constraintsList.done(REFINED_TYPE_CONSTRAINT_LIST);
+        }
     }
 
     enum DeclarationParsingMode {
