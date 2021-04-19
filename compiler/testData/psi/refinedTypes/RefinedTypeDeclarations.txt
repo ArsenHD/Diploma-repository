@@ -1,0 +1,168 @@
+KtFile: RefinedTypeDeclarations.kt
+  PACKAGE_DIRECTIVE
+    <empty list>
+  IMPORT_LIST
+    <empty list>
+  FUN
+    PsiElement(fun)('fun')
+    PsiWhiteSpace(' ')
+    PsiElement(IDENTIFIER)('isPositive')
+    VALUE_PARAMETER_LIST
+      PsiElement(LPAR)('(')
+      VALUE_PARAMETER
+        PsiElement(IDENTIFIER)('num')
+        PsiElement(COLON)(':')
+        PsiWhiteSpace(' ')
+        TYPE_REFERENCE
+          USER_TYPE
+            REFERENCE_EXPRESSION
+              PsiElement(IDENTIFIER)('Int')
+      PsiElement(RPAR)(')')
+    PsiWhiteSpace(' ')
+    PsiElement(EQ)('=')
+    PsiWhiteSpace(' ')
+    BINARY_EXPRESSION
+      REFERENCE_EXPRESSION
+        PsiElement(IDENTIFIER)('num')
+      PsiWhiteSpace(' ')
+      OPERATION_REFERENCE
+        PsiElement(GT)('>')
+      PsiWhiteSpace(' ')
+      INTEGER_CONSTANT
+        PsiElement(INTEGER_LITERAL)('0')
+  PsiWhiteSpace('\n\n')
+  FUN
+    PsiElement(fun)('fun')
+    PsiWhiteSpace(' ')
+    PsiElement(IDENTIFIER)('isNegative')
+    VALUE_PARAMETER_LIST
+      PsiElement(LPAR)('(')
+      VALUE_PARAMETER
+        PsiElement(IDENTIFIER)('num')
+        PsiElement(COLON)(':')
+        PsiWhiteSpace(' ')
+        TYPE_REFERENCE
+          USER_TYPE
+            REFERENCE_EXPRESSION
+              PsiElement(IDENTIFIER)('Int')
+      PsiElement(RPAR)(')')
+    PsiWhiteSpace(' ')
+    PsiElement(EQ)('=')
+    PsiWhiteSpace(' ')
+    BINARY_EXPRESSION
+      REFERENCE_EXPRESSION
+        PsiElement(IDENTIFIER)('num')
+      PsiWhiteSpace(' ')
+      OPERATION_REFERENCE
+        PsiElement(LT)('<')
+      PsiWhiteSpace(' ')
+      INTEGER_CONSTANT
+        PsiElement(INTEGER_LITERAL)('0')
+  PsiWhiteSpace('\n\n')
+  FUN
+    PsiElement(fun)('fun')
+    PsiWhiteSpace(' ')
+    PsiElement(IDENTIFIER)('inRange')
+    VALUE_PARAMETER_LIST
+      PsiElement(LPAR)('(')
+      VALUE_PARAMETER
+        PsiElement(IDENTIFIER)('num')
+        PsiElement(COLON)(':')
+        PsiWhiteSpace(' ')
+        TYPE_REFERENCE
+          USER_TYPE
+            REFERENCE_EXPRESSION
+              PsiElement(IDENTIFIER)('Int')
+      PsiElement(RPAR)(')')
+    PsiWhiteSpace(' ')
+    PsiElement(EQ)('=')
+    PsiWhiteSpace(' ')
+    BINARY_EXPRESSION
+      REFERENCE_EXPRESSION
+        PsiElement(IDENTIFIER)('num')
+      PsiWhiteSpace(' ')
+      OPERATION_REFERENCE
+        PsiElement(in)('in')
+      PsiWhiteSpace(' ')
+      BINARY_EXPRESSION
+        PREFIX_EXPRESSION
+          OPERATION_REFERENCE
+            PsiElement(MINUS)('-')
+          INTEGER_CONSTANT
+            PsiElement(INTEGER_LITERAL)('100')
+        OPERATION_REFERENCE
+          PsiElement(RANGE)('..')
+        INTEGER_CONSTANT
+          PsiElement(INTEGER_LITERAL)('100')
+  PsiWhiteSpace('\n\n')
+  TYPEALIAS
+    PsiElement(typealias)('typealias')
+    PsiWhiteSpace(' ')
+    PsiElement(IDENTIFIER)('PositiveInt')
+    PsiWhiteSpace(' ')
+    PsiElement(EQ)('=')
+    PsiWhiteSpace(' ')
+    TYPE_REFERENCE
+      USER_TYPE
+        REFERENCE_EXPRESSION
+          PsiElement(IDENTIFIER)('Int')
+    PsiWhiteSpace(' ')
+    PsiElement(satisfies)('satisfies')
+    PsiWhiteSpace(' ')
+    REFINED_TYPE_CONSTRAINT_LIST
+      REFINED_TYPE_CONSTRAINT
+        CALLABLE_REFERENCE_EXPRESSION
+          PsiElement(COLONCOLON)('::')
+          REFERENCE_EXPRESSION
+            PsiElement(IDENTIFIER)('isPositive')
+  PsiWhiteSpace('\n\n')
+  TYPEALIAS
+    PsiElement(typealias)('typealias')
+    PsiWhiteSpace(' ')
+    PsiElement(IDENTIFIER)('NegativeInt')
+    PsiWhiteSpace(' ')
+    PsiElement(EQ)('=')
+    PsiWhiteSpace(' ')
+    TYPE_REFERENCE
+      USER_TYPE
+        REFERENCE_EXPRESSION
+          PsiElement(IDENTIFIER)('Int')
+    PsiWhiteSpace(' ')
+    PsiElement(satisfies)('satisfies')
+    PsiWhiteSpace(' ')
+    REFINED_TYPE_CONSTRAINT_LIST
+      REFINED_TYPE_CONSTRAINT
+        CALLABLE_REFERENCE_EXPRESSION
+          PsiElement(COLONCOLON)('::')
+          REFERENCE_EXPRESSION
+            PsiElement(IDENTIFIER)('isNegative')
+  PsiWhiteSpace('\n\n')
+  TYPEALIAS
+    PsiElement(typealias)('typealias')
+    PsiWhiteSpace(' ')
+    PsiElement(IDENTIFIER)('MyInt')
+    PsiWhiteSpace(' ')
+    PsiElement(EQ)('=')
+    PsiWhiteSpace(' ')
+    TYPE_REFERENCE
+      USER_TYPE
+        REFERENCE_EXPRESSION
+          PsiElement(IDENTIFIER)('Int')
+    PsiWhiteSpace(' ')
+    PsiElement(satisfies)('satisfies')
+    PsiWhiteSpace(' ')
+    REFINED_TYPE_CONSTRAINT_LIST
+      PsiElement(LBRACKET)('[')
+      REFINED_TYPE_CONSTRAINT
+        CALLABLE_REFERENCE_EXPRESSION
+          PsiElement(COLONCOLON)('::')
+          REFERENCE_EXPRESSION
+            PsiElement(IDENTIFIER)('isPositive')
+      PsiElement(COMMA)(',')
+      PsiWhiteSpace(' ')
+      REFINED_TYPE_CONSTRAINT
+        CALLABLE_REFERENCE_EXPRESSION
+          PsiElement(COLONCOLON)('::')
+          REFERENCE_EXPRESSION
+            PsiElement(IDENTIFIER)('inRange')
+      PsiElement(RBRACKET)(']')

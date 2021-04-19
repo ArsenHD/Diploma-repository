@@ -2649,6 +2649,24 @@ public class ParsingTestGenerated extends AbstractParsingTest {
             }
         }
 
+        @TestMetadata("compiler/testData/psi/refinedTypes")
+        @TestDataPath("$PROJECT_ROOT")
+        @RunWith(JUnit3RunnerWithInners.class)
+        public static class RefinedTypes extends AbstractParsingTest {
+            private void runTest(String testDataFilePath) throws Exception {
+                KotlinTestUtils.runTest(this::doParsingTest, this, testDataFilePath);
+            }
+
+            public void testAllFilesPresentInRefinedTypes() throws Exception {
+                KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler/testData/psi/refinedTypes"), Pattern.compile("^(.*)\\.kts?$"), null, true);
+            }
+
+            @TestMetadata("RefinedTypeDeclarations.kt")
+            public void testRefinedTypeDeclarations() throws Exception {
+                runTest("compiler/testData/psi/refinedTypes/RefinedTypeDeclarations.kt");
+            }
+        }
+
         @TestMetadata("compiler/testData/psi/script")
         @TestDataPath("$PROJECT_ROOT")
         @RunWith(JUnit3RunnerWithInners.class)
