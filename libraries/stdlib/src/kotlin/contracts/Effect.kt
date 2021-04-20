@@ -34,6 +34,10 @@ public interface Effect
 @SinceKotlin("1.3")
 public interface ConditionalEffect : Effect
 
+@ContractsDsl
+@ExperimentalContracts
+public interface TypeRefinementEffect : Effect
+
 /**
  * An effect that can be observed after a function invocation.
  *
@@ -57,6 +61,10 @@ public interface SimpleEffect : Effect {
     @ContractsDsl
     @ExperimentalContracts
     public infix fun implies(booleanExpression: Boolean): ConditionalEffect
+
+    @ContractsDsl
+    @ExperimentalContracts
+    public infix fun implies(typeRefinement: TypeRefinementEffect) : ConditionalEffect
 }
 
 /**

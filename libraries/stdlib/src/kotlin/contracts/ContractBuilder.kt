@@ -7,6 +7,7 @@ package kotlin.contracts
 
 import kotlin.internal.ContractsDsl
 import kotlin.internal.InlineOnly
+import kotlin.reflect.KFunction
 
 /**
  * This marker distinguishes the experimental contract declaration API and is used to opt-in for that feature
@@ -66,6 +67,9 @@ public interface ContractBuilder {
      */
     // @sample samples.contracts.returnsNotNullContract
     @ContractsDsl public fun returnsNotNull(): ReturnsNotNull
+
+    @ContractsDsl public infix fun Any.satisfies(predicates: Array<KFunction<Boolean>>): TypeRefinementEffect
+    @ContractsDsl public infix fun Any.satisfies(predicate: KFunction<Boolean>): TypeRefinementEffect
 
     /**
      * Specifies that the function parameter [lambda] is invoked in place.

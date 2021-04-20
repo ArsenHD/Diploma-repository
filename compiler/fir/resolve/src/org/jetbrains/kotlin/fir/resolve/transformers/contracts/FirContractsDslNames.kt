@@ -17,6 +17,7 @@ object FirContractsDslNames {
     val EFFECT = id("Effect")
     val CONDITIONAL_EFFECT = id("ConditionalEffect")
     val SIMPLE_EFFECT = id("SimpleEffect")
+    val TYPE_REFINEMENT_EFFECT = id("TypeRefinementEffect")
     val RETURNS_EFFECT = id("Returns")
     val RETURNS_NOT_NULL_EFFECT = id("ReturnsNotNull")
     val CALLS_IN_PLACE_EFFECT = id("CallsInPlace")
