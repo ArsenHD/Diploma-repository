@@ -14,8 +14,5 @@ class KtRefinedTypeConstraintList : KtElementImplStub<KotlinPlaceHolderStub<KtRe
     constructor(stub: KotlinPlaceHolderStub<KtRefinedTypeConstraintList>) : super(stub, KtStubElementTypes.REFINED_TYPE_CONSTRAINT_LIST)
 }
 
-fun KtRefinedTypeConstraintList.getExpressions(): List<KtExpression> =
+fun KtRefinedTypeConstraintList.getConstraints(): List<KtRefinedTypeConstraint> =
     getStubOrPsiChildrenAsList(KtStubElementTypes.REFINED_TYPE_CONSTRAINT)
-        .map {
-            it.getExpression()
-        }

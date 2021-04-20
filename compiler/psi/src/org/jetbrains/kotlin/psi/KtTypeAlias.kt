@@ -58,4 +58,7 @@ class KtTypeAlias : KtTypeParameterListOwnerStub<KotlinTypeAliasStub>, KtNamedDe
     }
 
     override fun getPresentation() = ItemPresentationProviders.getItemPresentation(this)
+
+    fun getRefinedTypeConstraintsList(): KtRefinedTypeConstraintList? =
+        findChildByType(KtNodeTypes.REFINED_TYPE_CONSTRAINT_LIST)
 }

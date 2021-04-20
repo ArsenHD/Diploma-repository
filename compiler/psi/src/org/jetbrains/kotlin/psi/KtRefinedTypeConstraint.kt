@@ -15,4 +15,4 @@ class KtRefinedTypeConstraint: KtElementImplStub<KotlinRefinedTypeConstraintStub
     constructor(stub: KotlinRefinedTypeConstraintStub): super(stub, KtStubElementTypes.CONTRACT_EFFECT)
 }
 
-fun KtRefinedTypeConstraint.getExpression(): KtExpression = getChildOfType()!!
+fun KtRefinedTypeConstraint.getCallableReferenceExpression(): KtCallableReferenceExpression = getChildOfType()!!
