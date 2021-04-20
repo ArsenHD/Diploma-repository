@@ -278,6 +278,22 @@ public class PsiVisualizerForRawFirDataGenerated extends AbstractPsiVisualizerTe
                 }
             }
         }
+
+        @Nested
+        @TestMetadata("compiler/fir/raw-fir/psi2fir/testData/rawBuilder/declarations/refinedTypes")
+        @TestDataPath("$PROJECT_ROOT")
+        public class RefinedTypes {
+            @Test
+            public void testAllFilesPresentInRefinedTypes() throws Exception {
+                KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler/fir/raw-fir/psi2fir/testData/rawBuilder/declarations/refinedTypes"), Pattern.compile("^(.+)\\.kt$"), null, true);
+            }
+
+            @Test
+            @TestMetadata("refinedTypes.kt")
+            public void testRefinedTypes() throws Exception {
+                runTest("compiler/fir/raw-fir/psi2fir/testData/rawBuilder/declarations/refinedTypes/refinedTypes.kt");
+            }
+        }
     }
 
     @Nested

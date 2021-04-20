@@ -259,6 +259,24 @@ public class LightTree2FirConverterTestCaseGenerated extends AbstractLightTree2F
                 }
             }
         }
+
+        @TestMetadata("compiler/fir/raw-fir/psi2fir/testData/rawBuilder/declarations/refinedTypes")
+        @TestDataPath("$PROJECT_ROOT")
+        @RunWith(JUnit3RunnerWithInners.class)
+        public static class RefinedTypes extends AbstractLightTree2FirConverterTestCase {
+            private void runTest(String testDataFilePath) throws Exception {
+                KotlinTestUtils.runTest(this::doTest, this, testDataFilePath);
+            }
+
+            public void testAllFilesPresentInRefinedTypes() throws Exception {
+                KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler/fir/raw-fir/psi2fir/testData/rawBuilder/declarations/refinedTypes"), Pattern.compile("^(.+)\\.kt$"), null, true);
+            }
+
+            @TestMetadata("refinedTypes.kt")
+            public void testRefinedTypes() throws Exception {
+                runTest("compiler/fir/raw-fir/psi2fir/testData/rawBuilder/declarations/refinedTypes/refinedTypes.kt");
+            }
+        }
     }
 
     @TestMetadata("compiler/fir/raw-fir/psi2fir/testData/rawBuilder/expressions")

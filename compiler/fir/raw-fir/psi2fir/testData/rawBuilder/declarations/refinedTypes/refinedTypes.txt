@@ -1,0 +1,13 @@
+FILE: refinedTypes.kt
+    public? final? fun isPositive(num: Int): <implicit> {
+        ^isPositive CMP(>, num#.compareTo#(IntegerLiteral(0)))
+    }
+    public? final? fun isNegative(num: Int): <implicit> {
+        ^isNegative CMP(<, num#.compareTo#(IntegerLiteral(0)))
+    }
+    public? final? fun inRange(num: Int): <implicit> {
+        ^inRange IntegerLiteral(-100).rangeTo#(IntegerLiteral(100)).contains#(num#)
+    }
+    public? final typealias PositiveInt = Int satisfies ::isPositive#
+    public? final typealias NegativeInt = Int satisfies ::isNegative#
+    public? final typealias MyInt = Int satisfies [::isPositive#, ::inRange#]

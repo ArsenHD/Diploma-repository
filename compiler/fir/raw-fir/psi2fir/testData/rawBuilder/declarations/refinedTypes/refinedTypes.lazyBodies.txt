@@ -1,0 +1,7 @@
+FILE: refinedTypes.kt
+    public? final? fun isPositive(num: Int): <implicit> { LAZY_BLOCK }
+    public? final? fun isNegative(num: Int): <implicit> { LAZY_BLOCK }
+    public? final? fun inRange(num: Int): <implicit> { LAZY_BLOCK }
+    public? final typealias PositiveInt = Int satisfies ::isPositive#
+    public? final typealias NegativeInt = Int satisfies ::isNegative#
+    public? final typealias MyInt = Int satisfies [::isPositive#, ::inRange#]
