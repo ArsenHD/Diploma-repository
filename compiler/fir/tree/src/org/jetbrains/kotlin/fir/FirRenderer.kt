@@ -664,6 +664,24 @@ class FirRenderer(builder: StringBuilder, private val mode: RenderMode = RenderM
         println()
     }
 
+    override fun visitRefinedType(refinedType: FirRefinedType) {
+        refinedType.annotations.renderAnnotations()
+        visitMemberDeclaration(refinedType)
+        print(" = ")
+        refinedType.expandedTypeRef.accept(this)
+        print(" satisfies ")
+        refinedType.constraints.let {
+            if (it.size == 1) {
+                it.renderSeparated()
+            } else {
+                print("[")
+                it.renderSeparated()
+                print("]")
+            }
+        }
+        println()
+    }
+
     override fun visitTypeParameter(typeParameter: FirTypeParameter) {
         typeParameter.annotations.renderAnnotations()
         if (typeParameter.isReified) {
