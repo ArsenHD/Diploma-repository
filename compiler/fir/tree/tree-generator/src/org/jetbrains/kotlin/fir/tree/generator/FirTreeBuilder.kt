@@ -47,6 +47,7 @@ object FirTreeBuilder : AbstractFirTreeBuilder() {
     val klass = sealedElement("Class", Declaration, classLikeDeclaration, statement, typeParameterRefsOwner)
     val regularClass = element("RegularClass", Declaration, klass, memberDeclaration, controlFlowGraphOwner)
     val typeAlias = element("TypeAlias", Declaration, classLikeDeclaration, memberDeclaration, typeParametersOwner)
+    val refinedType = element("RefinedType", Declaration, typeAlias)
 
     val function = sealedElement("Function", Declaration, callableDeclaration, targetElement, controlFlowGraphOwner, statement)
 

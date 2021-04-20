@@ -36,6 +36,7 @@ import org.jetbrains.kotlin.fir.declarations.FirClassLikeDeclaration
 import org.jetbrains.kotlin.fir.declarations.FirClass
 import org.jetbrains.kotlin.fir.declarations.FirRegularClass
 import org.jetbrains.kotlin.fir.declarations.FirTypeAlias
+import org.jetbrains.kotlin.fir.declarations.FirRefinedType
 import org.jetbrains.kotlin.fir.declarations.FirFunction
 import org.jetbrains.kotlin.fir.declarations.FirContractDescriptionOwner
 import org.jetbrains.kotlin.fir.declarations.FirSimpleFunction
@@ -261,6 +262,10 @@ abstract class FirVisitorVoid : FirVisitor<Unit, Nothing?>() {
 
     open fun visitTypeAlias(typeAlias: FirTypeAlias) {
         visitElement(typeAlias)
+    }
+
+    open fun visitRefinedType(refinedType: FirRefinedType) {
+        visitElement(refinedType)
     }
 
     open fun visitFunction(function: FirFunction) {
@@ -777,6 +782,10 @@ abstract class FirVisitorVoid : FirVisitor<Unit, Nothing?>() {
 
     final override fun visitTypeAlias(typeAlias: FirTypeAlias, data: Nothing?) {
         visitTypeAlias(typeAlias)
+    }
+
+    final override fun visitRefinedType(refinedType: FirRefinedType, data: Nothing?) {
+        visitRefinedType(refinedType)
     }
 
     final override fun visitFunction(function: FirFunction, data: Nothing?) {

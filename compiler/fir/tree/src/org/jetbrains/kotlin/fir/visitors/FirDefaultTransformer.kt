@@ -5,8 +5,10 @@
 
 package org.jetbrains.kotlin.fir.visitors
 
+import org.jetbrains.kotlin.fir.declarations.FirDeclaration
 import org.jetbrains.kotlin.fir.declarations.FirContractFunction
 import org.jetbrains.kotlin.fir.declarations.FirErrorFunction
+import org.jetbrains.kotlin.fir.declarations.FirRefinedType
 import org.jetbrains.kotlin.fir.expressions.*
 import org.jetbrains.kotlin.fir.references.FirErrorNamedReference
 import org.jetbrains.kotlin.fir.references.FirReference
@@ -106,6 +108,10 @@ abstract class FirDefaultTransformer<D> : FirTransformer<D>() {
 
     override fun transformImplicitInvokeCall(implicitInvokeCall: FirImplicitInvokeCall, data: D): FirStatement {
         return transformFunctionCall(implicitInvokeCall, data)
+    }
+
+    override fun transformRefinedType(refinedType: FirRefinedType, data: D): FirDeclaration {
+        return transformTypeAlias(refinedType, data)
     }
 }
 

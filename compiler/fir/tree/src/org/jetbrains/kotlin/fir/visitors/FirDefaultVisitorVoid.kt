@@ -7,6 +7,7 @@ package org.jetbrains.kotlin.fir.visitors
 
 import org.jetbrains.kotlin.fir.declarations.FirContractFunction
 import org.jetbrains.kotlin.fir.declarations.FirErrorFunction
+import org.jetbrains.kotlin.fir.declarations.FirRefinedType
 import org.jetbrains.kotlin.fir.expressions.*
 import org.jetbrains.kotlin.fir.references.FirErrorNamedReference
 import org.jetbrains.kotlin.fir.types.*
@@ -95,6 +96,10 @@ abstract class FirDefaultVisitorVoid : FirVisitorVoid() {
 
     override fun visitImplicitInvokeCall(implicitInvokeCall: FirImplicitInvokeCall) {
         return visitFunctionCall(implicitInvokeCall)
+    }
+
+    override fun visitRefinedType(refinedType: FirRefinedType) {
+        return visitTypeAlias(refinedType)
     }
 
     override fun visitContractFunction(contractFunction: FirContractFunction) {

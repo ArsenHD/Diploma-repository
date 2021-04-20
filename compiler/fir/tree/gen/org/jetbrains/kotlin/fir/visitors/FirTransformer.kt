@@ -36,6 +36,7 @@ import org.jetbrains.kotlin.fir.declarations.FirClassLikeDeclaration
 import org.jetbrains.kotlin.fir.declarations.FirClass
 import org.jetbrains.kotlin.fir.declarations.FirRegularClass
 import org.jetbrains.kotlin.fir.declarations.FirTypeAlias
+import org.jetbrains.kotlin.fir.declarations.FirRefinedType
 import org.jetbrains.kotlin.fir.declarations.FirFunction
 import org.jetbrains.kotlin.fir.declarations.FirContractDescriptionOwner
 import org.jetbrains.kotlin.fir.declarations.FirSimpleFunction
@@ -262,6 +263,10 @@ abstract class FirTransformer<in D> : FirVisitor<FirElement, D>() {
 
     open fun transformTypeAlias(typeAlias: FirTypeAlias, data: D): FirStatement {
         return transformElement(typeAlias, data)
+    }
+
+    open fun transformRefinedType(refinedType: FirRefinedType, data: D): FirDeclaration {
+        return transformElement(refinedType, data)
     }
 
     open fun transformFunction(function: FirFunction, data: D): FirStatement {
@@ -778,6 +783,10 @@ abstract class FirTransformer<in D> : FirVisitor<FirElement, D>() {
 
     final override fun visitTypeAlias(typeAlias: FirTypeAlias, data: D): FirStatement {
         return transformTypeAlias(typeAlias, data)
+    }
+
+    final override fun visitRefinedType(refinedType: FirRefinedType, data: D): FirDeclaration {
+        return transformRefinedType(refinedType, data)
     }
 
     final override fun visitFunction(function: FirFunction, data: D): FirStatement {

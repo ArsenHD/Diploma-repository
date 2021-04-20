@@ -272,6 +272,10 @@ object NodeConfigurator : AbstractFieldConfigurator<FirTreeBuilder>(FirTreeBuild
             +annotations
         }
 
+        refinedType.configure {
+            +fieldList("constraints", call)
+        }
+
         anonymousFunction.configure {
             +symbol("FirAnonymousFunctionSymbol")
             +field(label, nullable = true)
