@@ -996,6 +996,10 @@ class DeclarationsConverter(
             }
         }
 
+        val refinedTypeConstraints = typeAlias.getChildNodeByType(REFINED_TYPE_CONSTRAINT_LIST)
+        val isRefinedType = refinedTypeConstraints != null
+        val builder = if (isRefinedType) FirRefinedTypeBuilder() else FirTypeAliasBuilder()
+
         val typeAliasName = identifier.nameAsSafeName()
         val typeAliasIsExpect = modifiers.hasExpect() || context.containerIsExpect
         return withChildClassName(typeAliasName, isExpect = typeAliasIsExpect) {
@@ -1007,7 +1011,7 @@ class DeclarationsConverter(
                     firTypeParameters += convertTypeParameters(it, emptyList(), classSymbol)
                 }
             }
-            return@withChildClassName buildTypeAlias {
+            return@withChildClassName builder.buildAbstractTypeAlias {
                 source = typeAlias.toFirSourceElement()
                 moduleData = baseModuleData
                 origin = FirDeclarationOrigin.Source
@@ -1020,6 +1024,15 @@ class DeclarationsConverter(
                 expandedTypeRef = firType
                 annotations += modifiers.annotations
                 typeParameters += firTypeParameters
+                if (this is FirRefinedTypeBuilder) {
+                    constraints += refinedTypeConstraints!!
+                        .getChildNodesByType(REFINED_TYPE_CONSTRAINT)
+                        .map {
+                            val reference = it.getChildNodeByType(CALLABLE_REFERENCE_EXPRESSION)!!
+                            val errorReason = "The predicate function reference is not an expression"
+                            expressionConverter.convertExpression(reference, errorReason) as FirCallableReferenceAccess
+                        }
+                }
             }
         }
     }
