@@ -1189,6 +1189,10 @@ abstract class BaseFirBuilder<T>(val baseSession: FirSession, val context: Conte
         }
     }
 
+    protected fun FirAbstractTypeAliasBuilder.buildAbstractTypeAlias(
+        init: FirAbstractTypeAliasBuilder.() -> Unit
+    ): FirTypeAlias = apply(init).build()
+
     protected inline fun <R> withDefaultSourceElementKind(newDefault: FirSourceElementKind, action: () -> R): R {
         val currentForced = context.forcedElementSourceKind
         context.forcedElementSourceKind = newDefault

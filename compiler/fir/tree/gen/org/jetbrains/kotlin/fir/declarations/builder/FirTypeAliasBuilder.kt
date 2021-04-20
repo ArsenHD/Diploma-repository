@@ -17,8 +17,8 @@ import org.jetbrains.kotlin.fir.declarations.FirDeclarationStatus
 import org.jetbrains.kotlin.fir.declarations.FirResolvePhase
 import org.jetbrains.kotlin.fir.declarations.FirTypeAlias
 import org.jetbrains.kotlin.fir.declarations.FirTypeParameter
+import org.jetbrains.kotlin.fir.declarations.builder.FirAbstractTypeAliasBuilder
 import org.jetbrains.kotlin.fir.declarations.builder.FirDeclarationBuilder
-import org.jetbrains.kotlin.fir.declarations.builder.FirTypeParametersOwnerBuilder
 import org.jetbrains.kotlin.fir.declarations.impl.FirTypeAliasImpl
 import org.jetbrains.kotlin.fir.expressions.FirAnnotationCall
 import org.jetbrains.kotlin.fir.symbols.impl.FirTypeAliasSymbol
@@ -32,18 +32,18 @@ import org.jetbrains.kotlin.name.Name
  */
 
 @FirBuilderDsl
-class FirTypeAliasBuilder : FirDeclarationBuilder, FirTypeParametersOwnerBuilder, FirAnnotationContainerBuilder {
+class FirTypeAliasBuilder : FirDeclarationBuilder, FirAbstractTypeAliasBuilder, FirAnnotationContainerBuilder {
     override var source: FirSourceElement? = null
     override lateinit var moduleData: FirModuleData
     override var resolvePhase: FirResolvePhase = FirResolvePhase.RAW_FIR
     override lateinit var origin: FirDeclarationOrigin
     override var attributes: FirDeclarationAttributes = FirDeclarationAttributes()
-    var deprecation: DeprecationsPerUseSite? = null
-    lateinit var status: FirDeclarationStatus
+    override var deprecation: DeprecationsPerUseSite? = null
+    override lateinit var status: FirDeclarationStatus
     override val typeParameters: MutableList<FirTypeParameter> = mutableListOf()
-    lateinit var name: Name
-    lateinit var symbol: FirTypeAliasSymbol
-    lateinit var expandedTypeRef: FirTypeRef
+    override lateinit var name: Name
+    override lateinit var symbol: FirTypeAliasSymbol
+    override lateinit var expandedTypeRef: FirTypeRef
     override val annotations: MutableList<FirAnnotationCall> = mutableListOf()
 
     override fun build(): FirTypeAlias {

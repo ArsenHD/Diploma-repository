@@ -102,9 +102,21 @@ object BuilderConfigurator : AbstractBuilderConfigurator<FirTreeBuilder>(FirTree
             parents += classBuilder
         }
 
+        val abstractTypeAliasBuilder by builder {
+            parents += typeParametersOwnerBuilder
+            parents += annotationContainerBuilder
+            fields from typeAlias
+        }
+
         builder(typeAlias) {
             parents += declarationBuilder
-            parents += typeParametersOwnerBuilder
+            parents += abstractTypeAliasBuilder
+            withCopy()
+        }
+
+        builder(refinedType) {
+            parents += declarationBuilder
+            parents += abstractTypeAliasBuilder
             withCopy()
         }
 

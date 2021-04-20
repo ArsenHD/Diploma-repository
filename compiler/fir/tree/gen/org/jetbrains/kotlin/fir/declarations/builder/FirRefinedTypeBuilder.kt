@@ -17,6 +17,8 @@ import org.jetbrains.kotlin.fir.declarations.FirDeclarationStatus
 import org.jetbrains.kotlin.fir.declarations.FirRefinedType
 import org.jetbrains.kotlin.fir.declarations.FirResolvePhase
 import org.jetbrains.kotlin.fir.declarations.FirTypeParameter
+import org.jetbrains.kotlin.fir.declarations.builder.FirAbstractTypeAliasBuilder
+import org.jetbrains.kotlin.fir.declarations.builder.FirDeclarationBuilder
 import org.jetbrains.kotlin.fir.declarations.impl.FirRefinedTypeImpl
 import org.jetbrains.kotlin.fir.expressions.FirAnnotationCall
 import org.jetbrains.kotlin.fir.expressions.FirCallableReferenceAccess
@@ -31,18 +33,18 @@ import org.jetbrains.kotlin.name.Name
  */
 
 @FirBuilderDsl
-class FirRefinedTypeBuilder : FirAnnotationContainerBuilder {
+class FirRefinedTypeBuilder : FirDeclarationBuilder, FirAbstractTypeAliasBuilder, FirAnnotationContainerBuilder {
     override var source: FirSourceElement? = null
-    lateinit var moduleData: FirModuleData
-    var resolvePhase: FirResolvePhase = FirResolvePhase.RAW_FIR
-    lateinit var origin: FirDeclarationOrigin
-    var attributes: FirDeclarationAttributes = FirDeclarationAttributes()
-    var deprecation: DeprecationsPerUseSite? = null
-    lateinit var status: FirDeclarationStatus
-    val typeParameters: MutableList<FirTypeParameter> = mutableListOf()
-    lateinit var name: Name
-    lateinit var symbol: FirTypeAliasSymbol
-    lateinit var expandedTypeRef: FirTypeRef
+    override lateinit var moduleData: FirModuleData
+    override var resolvePhase: FirResolvePhase = FirResolvePhase.RAW_FIR
+    override lateinit var origin: FirDeclarationOrigin
+    override var attributes: FirDeclarationAttributes = FirDeclarationAttributes()
+    override var deprecation: DeprecationsPerUseSite? = null
+    override lateinit var status: FirDeclarationStatus
+    override val typeParameters: MutableList<FirTypeParameter> = mutableListOf()
+    override lateinit var name: Name
+    override lateinit var symbol: FirTypeAliasSymbol
+    override lateinit var expandedTypeRef: FirTypeRef
     override val annotations: MutableList<FirAnnotationCall> = mutableListOf()
     val constraints: MutableList<FirCallableReferenceAccess> = mutableListOf()
 
@@ -72,4 +74,26 @@ inline fun buildRefinedType(init: FirRefinedTypeBuilder.() -> Unit): FirRefinedT
         callsInPlace(init, kotlin.contracts.InvocationKind.EXACTLY_ONCE)
     }
     return FirRefinedTypeBuilder().apply(init).build()
+}
+
+@OptIn(ExperimentalContracts::class)
+inline fun buildRefinedTypeCopy(original: FirRefinedType, init: FirRefinedTypeBuilder.() -> Unit): FirRefinedType {
+    contract {
+        callsInPlace(init, kotlin.contracts.InvocationKind.EXACTLY_ONCE)
+    }
+    val copyBuilder = FirRefinedTypeBuilder()
+    copyBuilder.source = original.source
+    copyBuilder.moduleData = original.moduleData
+    copyBuilder.resolvePhase = original.resolvePhase
+    copyBuilder.origin = original.origin
+    copyBuilder.attributes = original.attributes.copy()
+    copyBuilder.deprecation = original.deprecation
+    copyBuilder.status = original.status
+    copyBuilder.typeParameters.addAll(original.typeParameters)
+    copyBuilder.name = original.name
+    copyBuilder.symbol = original.symbol
+    copyBuilder.expandedTypeRef = original.expandedTypeRef
+    copyBuilder.annotations.addAll(original.annotations)
+    copyBuilder.constraints.addAll(original.constraints)
+    return copyBuilder.apply(init).build()
 }
