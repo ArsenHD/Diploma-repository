@@ -1084,21 +1084,32 @@ open class RawFirBuilder(
         }
 
         override fun visitTypeAlias(typeAlias: KtTypeAlias, data: Unit): FirElement {
-            val typeAliasIsExpect = typeAlias.hasExpectModifier() || context.containerIsExpect
+            val typeAliasIsExpect = typeAlias.hasExpectModifier()
+            val refinedTypeConstraints = typeAlias.getRefinedTypeConstraintsList()
+            val isRefinedType = refinedTypeConstraints != null
+            val builder = if (isRefinedType) FirRefinedTypeBuilder() else FirTypeAliasBuilder()
             return withChildClassName(typeAlias.nameAsSafeName, isExpect = typeAliasIsExpect) {
-                buildTypeAlias {
+                builder.buildAbstractTypeAlias {
                     source = typeAlias.toFirSourceElement()
                     moduleData = baseModuleData
                     origin = FirDeclarationOrigin.Source
                     name = typeAlias.nameAsSafeName
                     status = FirDeclarationStatusImpl(typeAlias.visibility, Modality.FINAL).apply {
-                        isExpect = typeAliasIsExpect
+                        isExpect = context.containerIsExpect
                         isActual = typeAlias.hasActualModifier()
                     }
                     symbol = FirTypeAliasSymbol(context.currentClassId)
                     expandedTypeRef = typeAlias.getTypeReference().toFirOrErrorType()
                     typeAlias.extractAnnotationsTo(this)
                     typeAlias.extractTypeParametersTo(this, symbol)
+                    if (this is FirRefinedTypeBuilder) {
+                        constraints += refinedTypeConstraints!!
+                            .getConstraints()
+                            .map {
+                                val reference = it.getCallableReferenceExpression()
+                                reference.accept(this@Visitor, data) as FirCallableReferenceAccess
+                            }
+                    }
                 }
             }
         }
