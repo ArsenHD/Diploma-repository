@@ -14,6 +14,8 @@ import org.jetbrains.kotlin.fir.declarations.FirDeclaration
 import org.jetbrains.kotlin.fir.declarations.FirProperty
 import org.jetbrains.kotlin.fir.declarations.FirValueParameter
 import org.jetbrains.kotlin.fir.expressions.*
+import org.jetbrains.kotlin.fir.references.FirResolvedCallableReference
+import org.jetbrains.kotlin.fir.symbols.impl.FirNamedFunctionSymbol
 import org.jetbrains.kotlin.fir.types.ConeKotlinType
 import org.jetbrains.kotlin.fir.types.coneType
 import org.jetbrains.kotlin.fir.visitors.FirDefaultVisitor
@@ -62,6 +64,21 @@ class ConeEffectExtractor(
 
             FirContractsDslNames.RETURNS_NOT_NULL -> {
                 ConeReturnsEffectDeclaration(ConeConstantReference.NOT_NULL)
+            }
+
+            FirContractsDslNames.SATISFIES -> {
+                val variable = functionCall.explicitReceiver?.accept(this, null) as? ConeValueParameterReference
+                    ?: return null
+                val arrayOfCall = functionCall.arguments[0] as? FirFunctionCall ?: return null
+                val arrayOfSymbol = functionCall.arguments[0].toResolvedCallableSymbol() ?: return null
+                if (arrayOfSymbol.callableId != FirContractsDslNames.ARRAY_OF) return null
+                val predicateReferences = arrayOfCall.arguments.map {
+                    val referenceAccess = it as? FirCallableReferenceAccess ?: return null
+                    val reference = referenceAccess.calleeReference as? FirResolvedCallableReference ?: return null
+                    if (reference.resolvedSymbol !is FirNamedFunctionSymbol) return null
+                    referenceAccess
+                }
+                ConeSatisfiesPredicate(variable, predicateReferences)
             }
 
             FirContractsDslNames.CALLS_IN_PLACE -> {

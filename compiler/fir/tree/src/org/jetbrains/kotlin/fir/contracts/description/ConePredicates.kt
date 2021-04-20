@@ -5,6 +5,9 @@
 
 package org.jetbrains.kotlin.fir.contracts.description
 
+import org.jetbrains.kotlin.fir.expressions.FirCallableReferenceAccess
+import org.jetbrains.kotlin.fir.references.FirResolvedCallableReference
+import org.jetbrains.kotlin.fir.symbols.impl.FirNamedFunctionSymbol
 import org.jetbrains.kotlin.fir.types.ConeKotlinType
 
 class ConeIsInstancePredicate(val arg: ConeValueParameterReference, val type: ConeKotlinType, val isNegated: Boolean) : ConeBooleanExpression {
@@ -21,4 +24,17 @@ class ConeIsNullPredicate(val arg: ConeValueParameterReference, val isNegated: B
 
     fun negated(): ConeIsNullPredicate =
         ConeIsNullPredicate(arg, isNegated.not())
+}
+
+class ConeSatisfiesPredicate(
+    val value: ConeValueParameterReference,
+    val predicateReferences: List<FirCallableReferenceAccess>
+) : ConeBooleanExpression {
+    override fun <R, D> accept(contractDescriptionVisitor: ConeContractDescriptionVisitor<R, D>, data: D): R =
+        contractDescriptionVisitor.visitSatisfiesPredicate(this, data)
+
+    val predicates: List<FirNamedFunctionSymbol>
+        get() = predicateReferences
+            .mapNotNull { it.calleeReference as? FirResolvedCallableReference }
+            .mapNotNull { it.resolvedSymbol as? FirNamedFunctionSymbol }
 }

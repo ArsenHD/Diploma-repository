@@ -13,6 +13,7 @@ import org.jetbrains.kotlin.fir.expressions.*
 import org.jetbrains.kotlin.fir.expressions.builder.*
 import org.jetbrains.kotlin.fir.references.builder.buildSimpleNamedReference
 import org.jetbrains.kotlin.fir.types.builder.buildResolvedTypeRef
+import org.jetbrains.kotlin.name.Name
 import org.jetbrains.kotlin.types.ConstantValueKind
 import org.jetbrains.kotlin.util.OperatorNameConventions
 
@@ -108,6 +109,25 @@ class ConeEffectToFirEffectDeclarationVisitor(
                 FirOperation.EQ
             }
             argumentList = buildBinaryArgumentList(argument, createConstNull())
+        }
+    }
+
+    override fun visitSatisfiesPredicate(satisfiesEffect: ConeSatisfiesPredicate, data: Map<Int, FirExpression>): FirExpression? {
+        val variable = satisfiesEffect.value.accept(this, data) ?: return null
+
+        return buildFunctionCall {
+            calleeReference = buildSimpleNamedReference {
+                name = Name.identifier("satisfies")
+            }
+            argumentList = buildArgumentList {
+                val references = satisfiesEffect.predicateReferences.toTypedArray()
+                arguments += variable
+                if (references.size == 1) {
+                    arguments += references.single()
+                } else {
+                    arguments += references
+                }
+            }
         }
     }
 

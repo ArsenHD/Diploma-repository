@@ -37,6 +37,9 @@ abstract class ConeContractDescriptionVisitor<out R, in D> {
 
     open fun visitIsNullPredicate(isNullPredicate: ConeIsNullPredicate, data: D): R = visitBooleanExpression(isNullPredicate, data)
 
+    open fun visitSatisfiesPredicate(satisfiesEffect: ConeSatisfiesPredicate, data: D): R =
+        visitBooleanExpression(satisfiesEffect, data)
+
     // Values
     open fun visitValue(value: ConeContractDescriptionValue, data: D): R = visitContractDescriptionElement(value, data)
 

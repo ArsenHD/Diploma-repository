@@ -45,6 +45,15 @@ class ConeContractRenderer(private val builder: StringBuilder) : ConeContractDes
         builder.append(" ${if (isNullPredicate.isNegated) "!=" else "=="} null")
     }
 
+    override fun visitSatisfiesPredicate(satisfiesEffect: ConeSatisfiesPredicate, data: Nothing?) {
+        satisfiesEffect.value.accept(this, data)
+        builder.append(" satisfies ")
+        satisfiesEffect.predicates.joinToString(prefix = "[", postfix = "]") {
+            val id = it.callableId
+            "${id.className}::${id.callableName}"
+        }
+    }
+
     override fun visitConstantDescriptor(constantReference: ConeConstantReference, data: Nothing?) {
         builder.append(constantReference.name)
     }

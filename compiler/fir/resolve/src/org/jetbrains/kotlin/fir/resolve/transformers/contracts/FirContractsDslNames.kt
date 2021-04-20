@@ -28,7 +28,11 @@ object FirContractsDslNames {
     // Effect-declaration calls
     val RETURNS = contractBuilder("returns")
     val RETURNS_NOT_NULL = contractBuilder("returnsNotNull")
+    val SATISFIES = contractBuilder("satisfies")
     val CALLS_IN_PLACE = contractBuilder("callsInPlace")
+
+    // TODO: add comment
+    val ARRAY_OF = id("kotlin", "arrayOf")
 
     // enum class InvocationKind
     val INVOCATION_KIND_ENUM = id("InvocationKind")
