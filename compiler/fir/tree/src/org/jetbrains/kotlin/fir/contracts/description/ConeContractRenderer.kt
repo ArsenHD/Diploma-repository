@@ -48,10 +48,13 @@ class ConeContractRenderer(private val builder: StringBuilder) : ConeContractDes
     override fun visitSatisfiesPredicate(satisfiesEffect: ConeSatisfiesPredicate, data: Nothing?) {
         satisfiesEffect.value.accept(this, data)
         builder.append(" satisfies ")
-        satisfiesEffect.predicates.joinToString(prefix = "[", postfix = "]") {
+        val predicates = satisfiesEffect.predicates.joinToString(prefix = "[", postfix = "]") {
             val id = it.callableId
-            "${id.className}::${id.callableName}"
+            val className = id.className ?: ""
+            val callableName = id.callableName
+            "$className::$callableName"
         }
+        builder.append(predicates)
     }
 
     override fun visitConstantDescriptor(constantReference: ConeConstantReference, data: Nothing?) {
