@@ -6,13 +6,10 @@
 package org.jetbrains.kotlin.fir.resolve.transformers.contracts
 
 import org.jetbrains.kotlin.fir.FirSession
-import org.jetbrains.kotlin.fir.contracts.FirEffectDeclaration
-import org.jetbrains.kotlin.fir.contracts.FirRawContractDescription
-import org.jetbrains.kotlin.fir.contracts.FirResolvedContractDescription
+import org.jetbrains.kotlin.fir.contracts.*
 import org.jetbrains.kotlin.fir.contracts.builder.buildLegacyRawContractDescription
 import org.jetbrains.kotlin.fir.contracts.builder.buildResolvedContractDescription
 import org.jetbrains.kotlin.fir.contracts.description.ConeEffectDeclaration
-import org.jetbrains.kotlin.fir.contracts.toFirEffectDeclaration
 import org.jetbrains.kotlin.fir.declarations.FirContractDescriptionOwner
 import org.jetbrains.kotlin.fir.declarations.FirDeclarationOrigin
 import org.jetbrains.kotlin.fir.declarations.FirValueParameter
@@ -70,13 +67,20 @@ internal fun FirEffectDeclaration.substituteArguments(
     return effect.buildContractEffectFir(effectExtractor, argumentsMapping)
 }
 
-
-internal fun <T : FirContractDescriptionOwner> wrapEffectsInContractCall(
+internal fun <T: FirContractDescriptionOwner> replaceContractByWrappedEffects(
     firSession: FirSession,
     owner: T,
     contractDescription: FirRawContractDescription
 ) {
     val rawEffects = contractDescription.rawEffects
+    val legacyRawContractDescription = wrapEffectsInContractCall(firSession, rawEffects)
+    owner.replaceContractDescription(legacyRawContractDescription)
+}
+
+internal fun wrapEffectsInContractCall(
+    firSession: FirSession,
+    rawEffects: List<FirExpression>
+): FirLegacyRawContractDescription {
     val effectsBlock = buildAnonymousFunctionExpression {
         anonymousFunction = buildAnonymousFunction {
             moduleData = firSession.moduleData
@@ -105,11 +109,9 @@ internal fun <T : FirContractDescriptionOwner> wrapEffectsInContractCall(
         }
     }
 
-    val legacyRawContractDescription = buildLegacyRawContractDescription {
+    return buildLegacyRawContractDescription {
         this.contractCall = contractCall
     }
-
-    owner.replaceContractDescription(legacyRawContractDescription)
 }
 
 internal fun getResolvedSymbolIfFunctionCall(statement: FirStatement): FirBasedSymbol<*>? {

@@ -73,7 +73,7 @@ class FirContractFunctionResolveTransformer(
             contractFunction: FirContractFunction,
             contractDescription: FirRawContractDescription
         ): FirContractFunction {
-            wrapEffectsInContractCall(session, contractFunction, contractDescription)
+            replaceContractByWrappedEffects(session, contractFunction, contractDescription)
             val legacyRawContractDescription = contractFunction.contractDescription as? FirLegacyRawContractDescription
                 ?: return transformErrorContractFunction(contractFunction)
             return transformLegacyRawContractDescription(contractFunction, legacyRawContractDescription)

@@ -116,7 +116,7 @@ open class FirContractResolveTransformer(
             return when (val contractDescription = owner.contractDescription) {
                 is FirLegacyRawContractDescription -> transformLegacyRawContractDescriptionOwner(owner, contractDescription)
                 is FirRawContractDescription -> {
-                    wrapEffectsInContractCall(session, owner, contractDescription)
+                    replaceContractByWrappedEffects(session, owner, contractDescription)
                     val legacyRawContractDescription = owner.contractDescription as? FirLegacyRawContractDescription
                         ?: return transformOwnerOfErrorContract(owner)
                     transformLegacyRawContractDescriptionOwner(owner, legacyRawContractDescription)
