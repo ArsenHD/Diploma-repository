@@ -30,6 +30,12 @@ class ConeSatisfiesPredicate(
     val value: ConeValueParameterReference,
     val predicateReferences: List<FirCallableReferenceAccess>
 ) : ConeBooleanExpression {
+
+    constructor(
+        value: ConeValueParameterReference,
+        predicate: FirCallableReferenceAccess
+    ) : this(value, listOf(predicate))
+
     override fun <R, D> accept(contractDescriptionVisitor: ConeContractDescriptionVisitor<R, D>, data: D): R =
         contractDescriptionVisitor.visitSatisfiesPredicate(this, data)
 

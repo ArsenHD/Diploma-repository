@@ -69,16 +69,26 @@ class ConeEffectExtractor(
             FirContractsDslNames.SATISFIES -> {
                 val variable = functionCall.explicitReceiver?.accept(this, null) as? ConeValueParameterReference
                     ?: return null
-                val arrayOfCall = functionCall.arguments[0] as? FirFunctionCall ?: return null
-                val arrayOfSymbol = functionCall.arguments[0].toResolvedCallableSymbol() ?: return null
-                if (arrayOfSymbol.callableId != FirContractsDslNames.ARRAY_OF) return null
-                val predicateReferences = arrayOfCall.arguments.map {
-                    val referenceAccess = it as? FirCallableReferenceAccess ?: return null
-                    val reference = referenceAccess.calleeReference as? FirResolvedCallableReference ?: return null
-                    if (reference.resolvedSymbol !is FirNamedFunctionSymbol) return null
-                    referenceAccess
+                return when (val right = functionCall.arguments[0]) {
+                    is FirFunctionCall -> {
+                        val arrayOfSymbol = functionCall.arguments[0].toResolvedCallableSymbol() ?: return null
+                        if (arrayOfSymbol.callableId != FirContractsDslNames.ARRAY_OF) return null
+                        val referencesVararg = right.arguments[0] as? FirVarargArgumentsExpression ?: return null
+                        val predicateReferences = referencesVararg.arguments.map {
+                            val referenceAccess = it as? FirCallableReferenceAccess ?: return null
+                            val reference = referenceAccess.calleeReference as? FirResolvedCallableReference ?: return null
+                            if (reference.resolvedSymbol !is FirNamedFunctionSymbol) return null
+                            referenceAccess
+                        }
+                        ConeSatisfiesPredicate(variable, predicateReferences)
+                    }
+                    is FirCallableReferenceAccess -> {
+                        val reference = right.calleeReference as? FirResolvedCallableReference ?: return null
+                        if (reference.resolvedSymbol !is FirNamedFunctionSymbol) return null
+                        ConeSatisfiesPredicate(variable, right)
+                    }
+                    else -> null
                 }
-                ConeSatisfiesPredicate(variable, predicateReferences)
             }
 
             FirContractsDslNames.CALLS_IN_PLACE -> {
