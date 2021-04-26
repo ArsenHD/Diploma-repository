@@ -273,7 +273,7 @@ object NodeConfigurator : AbstractFieldConfigurator<FirTreeBuilder>(FirTreeBuild
         }
 
         refinedType.configure {
-            +fieldList("constraints", callableReferenceAccess)
+            +fieldList("constraints", callableReferenceAccess).withTransform()
         }
 
         anonymousFunction.configure {

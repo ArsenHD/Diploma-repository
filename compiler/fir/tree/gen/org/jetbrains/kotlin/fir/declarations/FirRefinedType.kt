@@ -54,4 +54,6 @@ abstract class FirRefinedType : FirTypeAlias() {
     abstract override fun <D> transformExpandedTypeRef(transformer: FirTransformer<D>, data: D): FirRefinedType
 
     abstract override fun <D> transformAnnotations(transformer: FirTransformer<D>, data: D): FirRefinedType
+
+    abstract fun <D> transformConstraints(transformer: FirTransformer<D>, data: D): FirRefinedType
 }

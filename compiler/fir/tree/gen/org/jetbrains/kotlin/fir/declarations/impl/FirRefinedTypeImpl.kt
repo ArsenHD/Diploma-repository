@@ -29,6 +29,7 @@ import org.jetbrains.kotlin.fir.visitors.*
 internal class FirRefinedTypeImpl(
     override val source: FirSourceElement?,
     override val moduleData: FirModuleData,
+    @Volatile
     override var resolvePhase: FirResolvePhase,
     override val origin: FirDeclarationOrigin,
     override val attributes: FirDeclarationAttributes,
@@ -58,7 +59,7 @@ internal class FirRefinedTypeImpl(
         transformTypeParameters(transformer, data)
         transformExpandedTypeRef(transformer, data)
         transformAnnotations(transformer, data)
-        constraints.transformInplace(transformer, data)
+        transformConstraints(transformer, data)
         return this
     }
 
@@ -79,6 +80,11 @@ internal class FirRefinedTypeImpl(
 
     override fun <D> transformAnnotations(transformer: FirTransformer<D>, data: D): FirRefinedTypeImpl {
         annotations.transformInplace(transformer, data)
+        return this
+    }
+
+    override fun <D> transformConstraints(transformer: FirTransformer<D>, data: D): FirRefinedTypeImpl {
+        constraints.transformInplace(transformer, data)
         return this
     }
 
