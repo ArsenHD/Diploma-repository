@@ -48,7 +48,7 @@ internal fun extractEffectsFromContractFunctionCall(
         val argumentsMapping = createArgumentsMapping(contractFunctionCall)
         if (argumentsMapping != null) {
             contractDescription.effects.forEach {
-                val effect = it.substituteArguments(effectExtractor, argumentsMapping) as? FirEffectDeclaration
+                val effect = it.substituteArguments(effectExtractor, transformer, argumentsMapping) as? FirEffectDeclaration
                 if (effect == null) {
                     unresolvedEffects += contractFunctionCall
                 } else {
@@ -57,14 +57,15 @@ internal fun extractEffectsFromContractFunctionCall(
             }
         }
     }
-    return Pair(effects, unresolvedEffects)
+    return effects to unresolvedEffects
 }
 
 internal fun FirEffectDeclaration.substituteArguments(
     effectExtractor: ConeEffectExtractor,
+    transformer: FirBodyResolveTransformer,
     argumentsMapping: Map<Int, FirExpression>
 ): FirExpression? {
-    return effect.buildContractEffectFir(effectExtractor, argumentsMapping)
+    return effect.buildContractEffectFir(effectExtractor, transformer, argumentsMapping)
 }
 
 internal fun <T: FirContractDescriptionOwner> replaceContractByWrappedEffects(
