@@ -365,6 +365,16 @@ abstract class ControlFlowGraphVisitor<out R, in D> {
         return visitNode(node, data)
     }
 
+    // ----------------------------------- Refined types ---------------------------
+
+    open fun visitRefinedTypeEnterNode(node: RefinedTypeEnterNode, data: D): R {
+        return visitNode(node, data)
+    }
+
+    open fun visitRefinedTypeExitNode(node: RefinedTypeExitNode, data: D): R {
+        return visitNode(node, data)
+    }
+
     // ----------------------------------- Other -----------------------------------
 
     open fun visitAnnotationEnterNode(node: AnnotationEnterNode, data: D): R {
