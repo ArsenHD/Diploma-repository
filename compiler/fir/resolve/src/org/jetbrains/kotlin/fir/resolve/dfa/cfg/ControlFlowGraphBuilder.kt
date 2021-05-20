@@ -1127,6 +1127,23 @@ class ControlFlowGraphBuilder {
         return Pair(kind, unionNode)
     }
 
+    // ----------------------------------- Refined types ---------------------------------
+
+    fun enterRefinedType(refinedType: FirRefinedType): RefinedTypeEnterNode {
+        val graph = ControlFlowGraph(null, "STUB_GRAPH_FOR_REFINED_TYPE_DECLARATION", ControlFlowGraph.Kind.TopLevel)
+        pushGraph(graph, Mode.TopLevel)
+        return createRefinedTypeEnterNode(refinedType).also {
+            lastNodes.push(it)
+        }
+    }
+
+    fun exitRefinedType(refinedType: FirRefinedType): RefinedTypeExitNode {
+        val node = createRefinedTypeExitNode(refinedType)
+        popAndAddEdge(node)
+        popGraph()
+        return node
+    }
+
 
     // ----------------------------------- Annotations -----------------------------------
 

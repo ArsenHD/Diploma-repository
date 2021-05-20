@@ -732,6 +732,28 @@ class ElvisExitNode(owner: ControlFlowGraph, override val fir: FirElvisExpressio
     }
 }
 
+// ----------------------------------- Refined types ---------------------------
+
+class RefinedTypeEnterNode(owner: ControlFlowGraph, override val fir: FirRefinedType, level: Int, id: Int) : CFGNode<FirRefinedType>(owner, level, id), EnterNodeMarker {
+    init {
+        owner.enterNode = this
+    }
+
+    override fun <R, D> accept(visitor: ControlFlowGraphVisitor<R, D>, data: D): R {
+        return visitor.visitRefinedTypeEnterNode(this, data)
+    }
+}
+
+class RefinedTypeExitNode(owner: ControlFlowGraph, override val fir: FirRefinedType, level: Int, id: Int) : CFGNode<FirRefinedType>(owner, level, id), ExitNodeMarker {
+    init {
+        owner.exitNode = this
+    }
+
+    override fun <R, D> accept(visitor: ControlFlowGraphVisitor<R, D>, data: D): R {
+        return visitor.visitRefinedTypeExitNode(this, data)
+    }
+}
+
 // ----------------------------------- Other -----------------------------------
 
 class AnnotationEnterNode(owner: ControlFlowGraph, override val fir: FirAnnotationCall, level: Int, id: Int) : CFGNode<FirAnnotationCall>(owner, level, id), EnterNodeMarker {

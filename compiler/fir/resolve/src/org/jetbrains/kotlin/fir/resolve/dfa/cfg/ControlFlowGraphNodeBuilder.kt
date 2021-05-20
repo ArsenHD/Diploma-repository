@@ -140,6 +140,12 @@ fun ControlFlowGraphBuilder.createStringConcatenationCallNode(fir: FirStringConc
 fun ControlFlowGraphBuilder.createVariableAssignmentNode(fir: FirVariableAssignment): VariableAssignmentNode =
     VariableAssignmentNode(currentGraph, fir, levelCounter, createId())
 
+fun ControlFlowGraphBuilder.createRefinedTypeEnterNode(fir: FirRefinedType): RefinedTypeEnterNode =
+    RefinedTypeEnterNode(currentGraph, fir, levelCounter, createId())
+
+fun ControlFlowGraphBuilder.createRefinedTypeExitNode(fir: FirRefinedType): RefinedTypeExitNode =
+    RefinedTypeExitNode(currentGraph, fir, levelCounter, createId())
+
 fun ControlFlowGraphBuilder.createAnnotationExitNode(fir: FirAnnotationCall): AnnotationExitNode =
     AnnotationExitNode(currentGraph, fir, levelCounter, createId())
 

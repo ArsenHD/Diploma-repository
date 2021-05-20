@@ -126,6 +126,8 @@ fun CFGNode<*>.render(): String =
                 is GetClassCallNode -> "::class call"
 
                 is AbstractBinaryExitNode -> throw IllegalStateException()
+                is RefinedTypeEnterNode -> "Enter refined type ${fir.name}"
+                is RefinedTypeExitNode -> "Exit refined type ${fir.name}"
             },
         )
     }

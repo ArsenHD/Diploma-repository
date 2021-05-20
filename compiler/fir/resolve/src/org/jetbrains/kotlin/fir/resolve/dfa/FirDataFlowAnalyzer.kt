@@ -1266,6 +1266,16 @@ abstract class FirDataFlowAnalyzer<FLOW : Flow>(
         )
     }
 
+    // ----------------------------------- Refined types ----------------------------------
+
+    fun enterRefinedType(refinedType: FirRefinedType) {
+        graphBuilder.enterRefinedType(refinedType).mergeIncomingFlow()
+    }
+
+    fun exitRefinedType(refinedType: FirRefinedType) {
+        graphBuilder.exitRefinedType(refinedType).mergeIncomingFlow()
+    }
+
     // ----------------------------------- Annotations -----------------------------------
 
     fun enterAnnotationCall(annotationCall: FirAnnotationCall) {
