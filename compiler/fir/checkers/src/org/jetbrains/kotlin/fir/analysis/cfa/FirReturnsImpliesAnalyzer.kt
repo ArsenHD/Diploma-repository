@@ -135,7 +135,8 @@ object FirReturnsImpliesAnalyzer : FirControlFlowChecker() {
     ): MutableTypeStatements {
         val newTypeStatements: MutableTypeStatements = mutableMapOf()
 
-        approveStatementsTo(newTypeStatements, flow, statement, flow.logicStatements.flatMap { it.value })
+        // TODO: support both type and constraint statements here
+        approveStatementsTo(newTypeStatements, mutableMapOf(), flow, statement, flow.logicStatements.flatMap { it.value })
         newTypeStatements.mergeTypeStatements(flow.approvedTypeStatements)
 
         val variable = statement.variable
