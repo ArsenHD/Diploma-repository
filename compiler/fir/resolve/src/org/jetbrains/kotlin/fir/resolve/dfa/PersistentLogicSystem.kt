@@ -7,16 +7,37 @@ package org.jetbrains.kotlin.fir.resolve.dfa
 
 import com.google.common.collect.ArrayListMultimap
 import kotlinx.collections.immutable.*
+import org.jetbrains.kotlin.fir.symbols.impl.FirFunctionSymbol
 import org.jetbrains.kotlin.fir.types.ConeInferenceContext
 import org.jetbrains.kotlin.fir.types.ConeKotlinType
 import org.jetbrains.kotlin.utils.addIfNotNull
 import java.util.*
+import kotlin.collections.LinkedHashSet
+
+data class PersistentConstraintStatement(
+    override val variable: RealVariable,
+    override val satisfiedConstraints: PersistentSet<FirFunctionSymbol<*>> = persistentSetOf(),
+    override val unsatisfiedConstraints: PersistentSet<FirFunctionSymbol<*>> = persistentSetOf()
+) : ConstraintStatement(), PersistentProvableStatement<ConstraintStatement> {
+
+    override fun plus(other: ConstraintStatement): PersistentConstraintStatement {
+        return PersistentConstraintStatement(
+            variable,
+            satisfiedConstraints + other.satisfiedConstraints,
+            unsatisfiedConstraints + other.unsatisfiedConstraints
+        )
+    }
+
+    override fun invert(): ConstraintStatement {
+        return PersistentConstraintStatement(variable, unsatisfiedConstraints, satisfiedConstraints)
+    }
+}
 
 data class PersistentTypeStatement(
     override val variable: RealVariable,
     override val exactType: PersistentSet<ConeKotlinType>,
     override val exactNotType: PersistentSet<ConeKotlinType>
-) : TypeStatement() {
+) : TypeStatement(), PersistentProvableStatement<TypeStatement> {
     override operator fun plus(other: TypeStatement): PersistentTypeStatement {
         return PersistentTypeStatement(
             variable,
@@ -34,14 +55,18 @@ data class PersistentTypeStatement(
 }
 
 typealias PersistentApprovedTypeStatements = PersistentMap<RealVariable, PersistentTypeStatement>
+typealias PersistentApprovedConstraints = PersistentMap<RealVariable, PersistentConstraintStatement>
 typealias PersistentImplications = PersistentMap<DataFlowVariable, PersistentList<Implication>>
 
 class PersistentFlow : Flow {
     val previousFlow: PersistentFlow?
     var approvedTypeStatements: PersistentApprovedTypeStatements
+    var approvedConstraints: PersistentApprovedConstraints
     var logicStatements: PersistentImplications
     val level: Int
     var approvedTypeStatementsDiff: PersistentApprovedTypeStatements = persistentHashMapOf()
+    var approvedConstraintsDiff: PersistentApprovedConstraints = persistentHashMapOf()
+    var updatedAliasDiff: PersistentSet<RealVariable> = persistentSetOf()
 
     /*
      * val x = a
@@ -50,7 +75,7 @@ class PersistentFlow : Flow {
      * directAliasMap: { x -> a, y -> a}
      * backwardsAliasMap: { a -> [x, y] }
      */
-    override var directAliasMap: PersistentMap<RealVariable, RealVariableAndType>
+    override var directAliasMap: PersistentMap<RealVariable, RealVariableAndInfo>
     override var backwardsAliasMap: PersistentMap<RealVariable, PersistentList<RealVariable>>
 
     override var assignmentIndex: PersistentMap<RealVariable, Int>
@@ -58,6 +83,7 @@ class PersistentFlow : Flow {
     constructor(previousFlow: PersistentFlow) {
         this.previousFlow = previousFlow
         approvedTypeStatements = previousFlow.approvedTypeStatements
+        approvedConstraints = previousFlow.approvedConstraints
         logicStatements = previousFlow.logicStatements
         level = previousFlow.level + 1
 
@@ -69,6 +95,7 @@ class PersistentFlow : Flow {
     constructor() {
         previousFlow = null
         approvedTypeStatements = persistentHashMapOf()
+        approvedConstraints = persistentHashMapOf()
         logicStatements = persistentHashMapOf()
         level = 1
 
@@ -79,6 +106,10 @@ class PersistentFlow : Flow {
 
     override fun getTypeStatement(variable: RealVariable): TypeStatement? {
         return approvedTypeStatements[variable]
+    }
+
+    override fun getRefinedTypePredicates(variable: RealVariable): ConstraintStatement? {
+        return approvedConstraints[variable]
     }
 
     override fun getImplications(variable: DataFlowVariable): Collection<Implication> {
@@ -110,20 +141,23 @@ abstract class PersistentLogicSystem(context: ConeInferenceContext) : LogicSyste
     override fun joinFlow(flows: Collection<PersistentFlow>): PersistentFlow {
         return foldFlow(
             flows,
-            mergeOperation = { statements -> this.or(statements).takeIf { it.isNotEmpty } },
+            mergeTypeStatements = { statements -> this.or(statements).takeIf { it.isNotEmpty } },
+            mergeConstraints = { constraints -> this.or(constraints).takeIf { it.isNotEmpty } }
         )
     }
 
     override fun unionFlow(flows: Collection<PersistentFlow>): PersistentFlow {
         return foldFlow(
             flows,
-            this::and,
+            mergeTypeStatements = this::and,
+            mergeConstraints = this::and
         )
     }
 
     private inline fun foldFlow(
         flows: Collection<PersistentFlow>,
-        mergeOperation: (Collection<TypeStatement>) -> MutableTypeStatement?,
+        mergeTypeStatements: (Collection<TypeStatement>) -> MutableTypeStatement?,
+        mergeConstraints: (Collection<ConstraintStatement>) -> MutableConstraintStatement?
     ): PersistentFlow {
         if (flows.isEmpty()) return createEmptyFlow()
         flows.singleOrNull()?.let { return it }
@@ -132,16 +166,24 @@ abstract class PersistentLogicSystem(context: ConeInferenceContext) : LogicSyste
 
         val commonFlow = flows.reduce(::lowestCommonFlow)
 
-        val variables = flows.flatMap { it.approvedTypeStatements.keys }.toSet()
+        val variables = flows.flatMap { it.approvedTypeStatements.keys + it.approvedConstraints.keys }.toSet()
         for (variable in variables) {
-            val info = mergeOperation(flows.map { it.getApprovedTypeStatements(variable) }) ?: continue
-            removeTypeStatementsAboutVariable(commonFlow, variable)
+            val typeInfo = mergeTypeStatements(flows.map { it.getApprovedTypeStatements(variable, commonFlow) }) //?: continue
+            if (typeInfo != null) {
+                removeTypeStatementsAboutVariable(commonFlow, variable)
+            }
+            val constraintsInfo = mergeConstraints(flows.map { it.getApprovedConstraints(variable, commonFlow) }) //?: continue
+            if (constraintsInfo != null) {
+                removeConstraintStatementsAboutVariable(commonFlow, variable)
+            }
+            if (typeInfo == null && constraintsInfo == null) continue
             val thereWereReassignments = variable.hasDifferentReassignments(flows)
             if (thereWereReassignments) {
                 removeLogicStatementsAboutVariable(commonFlow, variable)
                 removeAliasInformationAboutVariable(commonFlow, variable)
             }
-            commonFlow.addApprovedStatements(info)
+            typeInfo?.let { commonFlow.addApprovedTypeStatements(it) }
+            constraintsInfo?.let { commonFlow.addApprovedConstraintStatements(it) }
         }
 
         commonFlow.addVariableAliases(aliasedVariablesThatDontChangeAlias)
@@ -159,9 +201,9 @@ abstract class PersistentLogicSystem(context: ConeInferenceContext) : LogicSyste
 
     private fun computeAliasesThatDontChange(
         flows: Collection<PersistentFlow>
-    ): MutableMap<RealVariable, RealVariableAndType> {
+    ): MutableMap<RealVariable, RealVariableAndInfo> {
         val flowsSize = flows.size
-        val aliasedVariablesThatDontChangeAlias = mutableMapOf<RealVariable, RealVariableAndType>()
+        val aliasedVariablesThatDontChangeAlias = mutableMapOf<RealVariable, RealVariableAndInfo>()
 
         flows.flatMapTo(mutableSetOf()) { it.directAliasMap.keys }.forEach { aliasedVariable ->
             val originals = flows.map { it.directAliasMap[aliasedVariable] ?: return@forEach }
@@ -176,14 +218,23 @@ abstract class PersistentLogicSystem(context: ConeInferenceContext) : LogicSyste
     }
 
     private fun PersistentFlow.addVariableAliases(
-        aliasedVariablesThatDontChangeAlias: MutableMap<RealVariable, RealVariableAndType>
+        aliasedVariablesThatDontChangeAlias: MutableMap<RealVariable, RealVariableAndInfo>
     ) {
         for ((alias, underlyingVariable) in aliasedVariablesThatDontChangeAlias) {
             addLocalVariableAlias(this, alias, underlyingVariable)
         }
     }
 
-    private fun PersistentFlow.addApprovedStatements(
+    private fun PersistentFlow.addApprovedConstraintStatements(
+        info: MutableConstraintStatement
+    ) {
+        approvedConstraints = approvedConstraints.addConstraintStatement(info)
+        if (previousFlow != null) {
+            approvedConstraintsDiff = approvedConstraintsDiff.addConstraintStatement(info)
+        }
+    }
+
+    private fun PersistentFlow.addApprovedTypeStatements(
         info: MutableTypeStatement
     ) {
         approvedTypeStatements = approvedTypeStatements.addTypeStatement(info)
@@ -192,7 +243,7 @@ abstract class PersistentLogicSystem(context: ConeInferenceContext) : LogicSyste
         }
     }
 
-    override fun addLocalVariableAlias(flow: PersistentFlow, alias: RealVariable, underlyingVariable: RealVariableAndType) {
+    override fun addLocalVariableAlias(flow: PersistentFlow, alias: RealVariable, underlyingVariable: RealVariableAndInfo) {
         removeLocalVariableAlias(flow, alias)
         flow.directAliasMap = flow.directAliasMap.put(alias, underlyingVariable)
         flow.backwardsAliasMap = flow.backwardsAliasMap.put(
@@ -265,30 +316,108 @@ abstract class PersistentLogicSystem(context: ConeInferenceContext) : LogicSyste
 
 
     @OptIn(DfaInternals::class)
-    private fun PersistentFlow.getApprovedTypeStatements(variable: RealVariable): MutableTypeStatement {
+    private fun PersistentFlow.getApprovedTypeStatements(variable: RealVariable, parentFlow: PersistentFlow): TypeStatement {
+        return getApprovedStatements(
+            variable,
+            parentFlow,
+            initResult = { realVar -> MutableTypeStatement(realVar) },
+            obtainStatements = { flow, realVar -> flow.approvedTypeStatements[realVar] },
+            withOriginalValue = { result, value ->
+                MutableTypeStatement(
+                    result.variable,
+                    LinkedHashSet(result.exactType).also { it.addIfNotNull(value.originalType) },
+                    LinkedHashSet(result.exactNotType)
+                )
+            }
+        )
+    }
+
+    @OptIn(DfaInternals::class)
+    private fun PersistentFlow.getApprovedConstraints(variable: RealVariable, parentFlow: PersistentFlow): ConstraintStatement {
+        return getApprovedStatements(
+            variable,
+            parentFlow,
+            initResult = { realVar -> MutableConstraintStatement(realVar) },
+            obtainStatements = { flow, realVar -> flow.approvedConstraints[realVar] },
+            withOriginalValue = { result, value ->
+                MutableConstraintStatement(
+                    result.variable,
+                    LinkedHashSet(result.satisfiedConstraints).also { constraints -> value.originalConstraints?.let { constraints += it } },
+                    LinkedHashSet(result.unsatisfiedConstraints)
+                )
+            }
+        )
+    }
+
+    @OptIn(DfaInternals::class)
+    private fun <T : AdditiveStatement<T>> PersistentFlow.getApprovedStatements(
+        variable: RealVariable,
+        parentFlow: PersistentFlow,
+        initResult: (RealVariable) -> T,
+        obtainStatements: (PersistentFlow, RealVariable) -> T?,
+        withOriginalValue: (T, RealVariableAndInfo) -> T
+    ): T {
         var flow = this
-        val result = MutableTypeStatement(variable)
+        var result = initResult(variable)
         val variableUnderAlias = directAliasMap[variable]
         if (variableUnderAlias == null) {
-            flow.approvedTypeStatements[variable]?.let {
-                result += it
+            // get approved type statement even though the starting flow == parent flow
+            if (flow == parentFlow) {
+                obtainStatements(flow, variable)?.let {
+                    result += it
+                }
+            } else {
+                while (flow != parentFlow) {
+                    obtainStatements(flow, variable)?.let {
+                        result += it
+                    }
+                    flow = flow.previousFlow!!
+                }
             }
         } else {
-            result.exactType.addIfNotNull(variableUnderAlias.originalType)
-            flow.approvedTypeStatements[variableUnderAlias.variable]?.let { result += it }
+            result = withOriginalValue(result, variableUnderAlias)
+            obtainStatements(flow, variableUnderAlias.variable)?.let {
+                result += it
+            }
         }
         return result
     }
 
+    override fun addConstraintStatement(flow: PersistentFlow, statement: ConstraintStatement) {
+        if (statement.isEmpty) return
+        addStatement(
+            flow,
+            statement,
+            updateStatements = { approvedConstraints = approvedConstraints.addConstraintStatement(statement) },
+            updateDiff = { approvedConstraintsDiff = approvedConstraintsDiff.addConstraintStatement(statement) }
+        )
+    }
+
     override fun addTypeStatement(flow: PersistentFlow, statement: TypeStatement) {
         if (statement.isEmpty) return
-        with(flow) {
-            approvedTypeStatements = approvedTypeStatements.addTypeStatement(statement)
+        addStatement(
+            flow,
+            statement,
+            updateStatements = { approvedTypeStatements = approvedTypeStatements.addTypeStatement(statement) },
+            updateDiff = { approvedTypeStatementsDiff = approvedTypeStatementsDiff.addTypeStatement(statement) }
+        )
+    }
+
+    // Use only for TypeStatement and ConstraintStatement
+    private fun addStatement(
+        flow: PersistentFlow,
+        statement: Statement<*>,
+        updateStatements: PersistentFlow.() -> Unit,
+        updateDiff: PersistentFlow.() -> Unit
+    ) {
+        val variable = statement.variable as? RealVariable
+        with (flow) {
+            updateStatements()
             if (previousFlow != null) {
-                approvedTypeStatementsDiff = approvedTypeStatementsDiff.addTypeStatement(statement)
+                updateDiff()
             }
-            if (statement.variable.isThisReference) {
-                processUpdatedReceiverVariable(flow, statement.variable)
+            if (variable?.isThisReference == true) {
+                processUpdatedReceiverVariable(flow, variable)
             }
         }
     }
@@ -310,6 +439,11 @@ abstract class PersistentLogicSystem(context: ConeInferenceContext) : LogicSyste
     override fun removeTypeStatementsAboutVariable(flow: PersistentFlow, variable: RealVariable) {
         flow.approvedTypeStatements -= variable
         flow.approvedTypeStatementsDiff -= variable
+    }
+
+    override fun removeConstraintStatementsAboutVariable(flow: PersistentFlow, variable: RealVariable) {
+        flow.approvedConstraints -= variable
+        flow.approvedConstraintsDiff -= variable
     }
 
     override fun removeLogicStatementsAboutVariable(flow: PersistentFlow, variable: DataFlowVariable) {
@@ -385,14 +519,20 @@ abstract class PersistentLogicSystem(context: ConeInferenceContext) : LogicSyste
 
         val updatedReceivers = mutableSetOf<RealVariable>()
         approvedFacts.asMap().forEach { (variable, infos) ->
-            var resultInfo = PersistentTypeStatement(variable, persistentSetOf(), persistentSetOf())
+            var resultTypeInfo = PersistentTypeStatement(variable, persistentSetOf(), persistentSetOf())
+            var resultConstraintInfo = PersistentConstraintStatement(variable, persistentSetOf(), persistentSetOf())
             for (info in infos) {
-                resultInfo += info
+                when (info) {
+                    is TypeStatement -> resultTypeInfo += info
+                    is ConstraintStatement -> resultConstraintInfo += info
+                    else -> error("Only TypeStatement and ConstraintStatement are expected, but got: ${info::class}")
+                }
             }
             if (variable.isThisReference) {
                 updatedReceivers += variable
             }
-            addTypeStatement(resultFlow, resultInfo)
+            addTypeStatement(resultFlow, resultTypeInfo)
+            addConstraintStatement(resultFlow, resultConstraintInfo)
         }
 
         updatedReceivers.forEach {
@@ -407,8 +547,8 @@ abstract class PersistentLogicSystem(context: ConeInferenceContext) : LogicSyste
         approvedStatement: OperationStatement,
         initialStatements: Collection<Implication>?,
         shouldRemoveSynthetics: Boolean
-    ): ArrayListMultimap<RealVariable, TypeStatement> {
-        val approvedFacts: ArrayListMultimap<RealVariable, TypeStatement> = ArrayListMultimap.create()
+    ): ArrayListMultimap<RealVariable, ProvableStatement<*>> {
+        val approvedFacts: ArrayListMultimap<RealVariable, ProvableStatement<*>> = ArrayListMultimap.create()
         val approvedStatements = LinkedList<OperationStatement>().apply { this += approvedStatement }
         approveOperationStatementsInternal(flow, approvedStatements, initialStatements, shouldRemoveSynthetics, approvedFacts)
         return approvedFacts
@@ -419,7 +559,7 @@ abstract class PersistentLogicSystem(context: ConeInferenceContext) : LogicSyste
         approvedStatements: LinkedList<OperationStatement>,
         initialStatements: Collection<Implication>?,
         shouldRemoveSynthetics: Boolean,
-        approvedTypeStatements: ArrayListMultimap<RealVariable, TypeStatement>
+        approvedFacts: ArrayListMultimap<RealVariable, ProvableStatement<*>>,
     ) {
         if (approvedStatements.isEmpty()) return
         val approvedOperationStatements = mutableSetOf<OperationStatement>()
@@ -441,7 +581,8 @@ abstract class PersistentLogicSystem(context: ConeInferenceContext) : LogicSyste
                 if (statement.condition == approvedStatement) {
                     when (val effect = statement.effect) {
                         is OperationStatement -> approvedStatements += effect
-                        is TypeStatement -> approvedTypeStatements.put(effect.variable, effect)
+                        is TypeStatement -> approvedFacts.put(effect.variable, effect)
+                        is ConstraintStatement -> approvedFacts.put(effect.variable, effect)
                     }
                 }
             }
@@ -449,8 +590,21 @@ abstract class PersistentLogicSystem(context: ConeInferenceContext) : LogicSyste
         }
     }
 
+    private fun <T : MutableProvableStatement<E>, E : ProvableStatement<E>> putStatementTo(
+        destination: MutableMap<RealVariable, T>,
+        variable: RealVariable,
+        statement: T
+    ) {
+        destination.put(variable, statement) {
+            @Suppress("UNCHECKED_CAST")
+            it += statement as E
+            it
+        }
+    }
+
     override fun approveStatementsTo(
-        destination: MutableTypeStatements,
+        typeDestination: MutableTypeStatements,
+        constraintDestination: MutableConstraintStatements,
         flow: PersistentFlow,
         approvedStatement: OperationStatement,
         statements: Collection<Implication>
@@ -459,10 +613,10 @@ abstract class PersistentLogicSystem(context: ConeInferenceContext) : LogicSyste
             approveOperationStatementsInternal(flow, approvedStatement, statements, shouldRemoveSynthetics = false)
         approveOperationStatements.asMap().forEach { (variable, infos) ->
             for (info in infos) {
-                val mutableInfo = info.asMutableStatement()
-                destination.put(variable, mutableInfo) {
-                    it += mutableInfo
-                    it
+                when (val mutableInfo = info.asMutableStatement()) {
+                    is MutableTypeStatement -> putStatementTo(typeDestination, variable, mutableInfo)
+                    is MutableConstraintStatement -> putStatementTo(constraintDestination, variable, mutableInfo)
+                    else -> throw IllegalArgumentException("Unknown ProvableStatement type: ${mutableInfo::class}")
                 }
             }
         }
@@ -477,7 +631,8 @@ abstract class PersistentLogicSystem(context: ConeInferenceContext) : LogicSyste
         return InfoForBooleanOperator(
             leftFlow.logicStatements[leftVariable] ?: emptyList(),
             rightFlow.logicStatements[rightVariable] ?: emptyList(),
-            rightFlow.approvedTypeStatementsDiff
+            rightFlow.approvedTypeStatementsDiff,
+            rightFlow.approvedConstraintsDiff
         )
     }
 
@@ -512,6 +667,17 @@ private fun lowestCommonFlow(left: PersistentFlow, right: PersistentFlow): Persi
     return left
 }
 
+private fun PersistentApprovedConstraints.addConstraintStatement(info: ConstraintStatement): PersistentApprovedConstraints {
+    val variable = info.variable
+    val existingInfo = this[variable]
+    return if (existingInfo == null) {
+        val persistentInfo = if (info is PersistentConstraintStatement) info else info.toPersistent()
+        put(variable, persistentInfo)
+    } else {
+        put(variable, existingInfo + info)
+    }
+}
+
 private fun PersistentApprovedTypeStatements.addTypeStatement(info: TypeStatement): PersistentApprovedTypeStatements {
     val variable = info.variable
     val existingInfo = this[variable]
@@ -529,8 +695,28 @@ private fun TypeStatement.toPersistent(): PersistentTypeStatement = PersistentTy
     exactNotType.toPersistentSet()
 )
 
+private fun ConstraintStatement.toPersistent(): PersistentConstraintStatement = PersistentConstraintStatement(
+    variable,
+    satisfiedConstraints.toPersistentSet(),
+    unsatisfiedConstraints.toPersistentSet()
+)
+
+fun ProvableStatement<*>.asMutableStatement(): MutableProvableStatement<*> = when (this) {
+    is MutableTypeStatement -> this
+    is MutableConstraintStatement -> this
+    is PersistentTypeStatement -> asMutableStatement()
+    is PersistentConstraintStatement -> asMutableStatement()
+    else -> throw IllegalArgumentException("Unknown ProvableStatement type: ${this::class}")
+}
+
 fun TypeStatement.asMutableStatement(): MutableTypeStatement = when (this) {
     is MutableTypeStatement -> this
     is PersistentTypeStatement -> MutableTypeStatement(variable, exactType.toMutableSet(), exactNotType.toMutableSet())
     else -> throw IllegalArgumentException("Unknown TypeStatement type: ${this::class}")
+}
+
+fun ConstraintStatement.asMutableStatement(): MutableConstraintStatement = when (this) {
+    is MutableConstraintStatement -> this
+    is PersistentConstraintStatement -> MutableConstraintStatement(variable, satisfiedConstraints.toMutableSet(), unsatisfiedConstraints.toMutableSet())
+    else -> throw IllegalArgumentException("Unknown ConstraintStatement type: ${this::class}")
 }

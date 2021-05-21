@@ -5,10 +5,13 @@
 
 package org.jetbrains.kotlin.fir.resolve.dfa
 
+import kotlinx.collections.immutable.persistentSetOf
+import kotlinx.collections.immutable.toPersistentSet
 import org.jetbrains.kotlin.fir.FirElement
 import org.jetbrains.kotlin.fir.expressions.FirResolvedQualifier
 import org.jetbrains.kotlin.fir.symbols.FirBasedSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirCallableSymbol
+import org.jetbrains.kotlin.fir.symbols.impl.FirFunctionSymbol
 import org.jetbrains.kotlin.fir.types.ConeClassErrorType
 import org.jetbrains.kotlin.fir.types.ConeKotlinType
 import org.jetbrains.kotlin.types.SmartcastStability
@@ -79,15 +82,20 @@ class RealVariable(
     }
 }
 
-class RealVariableAndType(val variable: RealVariable, val originalType: ConeKotlinType?) {
+class RealVariableAndInfo(
+    val variable: RealVariable,
+    val originalType: ConeKotlinType?,
+    val originalConstraints: Set<FirFunctionSymbol<*>>?
+) {
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
         if (javaClass != other?.javaClass) return false
 
-        other as RealVariableAndType
+        other as RealVariableAndInfo
 
         if (variable != other.variable) return false
         if (originalType != other.originalType) return false
+        if (originalConstraints != other.originalConstraints) return false
 
         return true
     }
@@ -95,6 +103,7 @@ class RealVariableAndType(val variable: RealVariable, val originalType: ConeKotl
     override fun hashCode(): Int {
         var result = variable.hashCode()
         result = 31 * result + originalType.hashCode()
+        result = 31 * result + originalConstraints.hashCode()
         return result
     }
 }
@@ -128,10 +137,26 @@ private infix fun FirElement.isEqualsTo(other: FirElement): Boolean {
 
 // --------------------------------------- Facts ---------------------------------------
 
-sealed class Statement<T : Statement<T>> {
-    abstract fun invert(): T
-    abstract val variable: DataFlowVariable
+sealed interface Statement<T : Statement<T>> {
+    fun invert(): T
+    val variable: DataFlowVariable
 }
+
+interface AdditiveStatement<T : AdditiveStatement<T>> : Statement<T> {
+    operator fun plus(other: T): T
+}
+
+interface MutableStatement<T : Statement<T>> : Statement<T> {
+    operator fun plusAssign(other: T)
+}
+
+interface PersistentStatement<T : Statement<T>> : Statement<T>
+
+sealed interface ProvableStatement<T : AdditiveStatement<T>> : AdditiveStatement<T>
+
+interface MutableProvableStatement<T : ProvableStatement<T>> : ProvableStatement<T>, MutableStatement<T>
+
+interface PersistentProvableStatement<T : ProvableStatement<T>> : ProvableStatement<T>, PersistentStatement<T>
 
 /*
  * Examples:
@@ -140,7 +165,7 @@ sealed class Statement<T : Statement<T>> {
  * d == True
  * d == False
  */
-data class OperationStatement(override val variable: DataFlowVariable, val operation: Operation) : Statement<OperationStatement>() {
+data class OperationStatement(override val variable: DataFlowVariable, val operation: Operation) : Statement<OperationStatement> {
     override fun invert(): OperationStatement {
         return OperationStatement(variable, operation.invert())
     }
@@ -150,12 +175,66 @@ data class OperationStatement(override val variable: DataFlowVariable, val opera
     }
 }
 
-abstract class TypeStatement : Statement<TypeStatement>() {
+abstract class ConstraintStatement : ProvableStatement<ConstraintStatement> {
+    abstract override val variable: RealVariable
+    abstract val satisfiedConstraints: Set<FirFunctionSymbol<*>>
+    abstract val unsatisfiedConstraints: Set<FirFunctionSymbol<*>>
+
+    override fun toString(): String {
+        val satisfiedPredicates = satisfiedConstraints.toPredicateNames()
+        val unsatisfiedPredicates = satisfiedConstraints.toPredicateNames()
+        return "$variable: $satisfiedPredicates, $unsatisfiedPredicates"
+    }
+
+    val isEmpty: Boolean
+        get() = satisfiedConstraints.isEmpty() && unsatisfiedConstraints.isEmpty()
+
+    val isNotEmpty: Boolean
+        get() = !isEmpty
+
+    private fun Set<FirFunctionSymbol<*>>.toPredicateNames(): String =
+        map { "${it.callableId}" }.joinToString(prefix = "[", postfix = "]") { it }
+}
+
+internal fun ConstraintStatement.toMutableConstraintStatement(): MutableConstraintStatement =
+    MutableConstraintStatement(
+        variable,
+        LinkedHashSet(satisfiedConstraints),
+        LinkedHashSet(unsatisfiedConstraints)
+    )
+
+data class MutableConstraintStatement(
+    override val variable: RealVariable,
+    override val satisfiedConstraints: MutableSet<FirFunctionSymbol<*>> = linkedSetOf(),
+    override val unsatisfiedConstraints: MutableSet<FirFunctionSymbol<*>> = linkedSetOf()
+) : ConstraintStatement(), MutableProvableStatement<ConstraintStatement> {
+    override fun plus(other: ConstraintStatement): ConstraintStatement {
+        return MutableConstraintStatement(
+            variable,
+            LinkedHashSet(satisfiedConstraints).apply { addAll(other.satisfiedConstraints) },
+            LinkedHashSet(unsatisfiedConstraints).apply { addAll(other.unsatisfiedConstraints) }
+        )
+    }
+
+    override fun plusAssign(other: ConstraintStatement) {
+        satisfiedConstraints += other.satisfiedConstraints
+        unsatisfiedConstraints += other.unsatisfiedConstraints
+    }
+
+    override fun invert(): ConstraintStatement {
+        return MutableConstraintStatement(
+            variable,
+            LinkedHashSet(unsatisfiedConstraints),
+            LinkedHashSet(satisfiedConstraints)
+        )
+    }
+}
+
+abstract class TypeStatement : ProvableStatement<TypeStatement> {
     abstract override val variable: RealVariable
     abstract val exactType: Set<ConeKotlinType>
     abstract val exactNotType: Set<ConeKotlinType>
 
-    abstract operator fun plus(other: TypeStatement): TypeStatement
     abstract val isEmpty: Boolean
     val isNotEmpty: Boolean get() = !isEmpty
 
@@ -164,13 +243,20 @@ abstract class TypeStatement : Statement<TypeStatement>() {
     }
 }
 
+internal fun TypeStatement.toMutableTypeStatement(): MutableTypeStatement =
+    MutableTypeStatement(
+        variable,
+        LinkedHashSet(exactType),
+        LinkedHashSet(exactNotType)
+    )
+
 operator fun TypeStatement.plus(other: TypeStatement?): TypeStatement = other?.let { this + other } ?: this
 
 class MutableTypeStatement(
     override val variable: RealVariable,
     override val exactType: MutableSet<ConeKotlinType> = linkedSetOf(),
     override val exactNotType: MutableSet<ConeKotlinType> = linkedSetOf()
-) : TypeStatement() {
+) : TypeStatement(), MutableProvableStatement<TypeStatement> {
     override fun plus(other: TypeStatement): MutableTypeStatement = MutableTypeStatement(
         variable,
         LinkedHashSet(exactType).apply { addAll(other.exactType) },
@@ -188,9 +274,9 @@ class MutableTypeStatement(
         )
     }
 
-    operator fun plusAssign(info: TypeStatement) {
-        exactType += info.exactType
-        exactNotType += info.exactNotType
+    override operator fun plusAssign(other: TypeStatement) {
+        exactType += other.exactType
+        exactNotType += other.exactNotType
     }
 
     fun copy(): MutableTypeStatement = MutableTypeStatement(variable, LinkedHashSet(exactType), LinkedHashSet(exactNotType))
@@ -210,7 +296,11 @@ fun Implication.invertCondition(): Implication = Implication(condition.invert(),
 // --------------------------------------- Aliases ---------------------------------------
 
 typealias TypeStatements = Map<RealVariable, TypeStatement>
+typealias ConstraintStatements = Map<RealVariable, ConstraintStatement>
+typealias ProvableStatements = Map<RealVariable, ProvableStatement<*>>
 typealias MutableTypeStatements = MutableMap<RealVariable, MutableTypeStatement>
+typealias MutableConstraintStatements = MutableMap<RealVariable, MutableConstraintStatement>
+typealias MutableProvableStatements = MutableMap<RealVariable, MutableProvableStatement<*>>
 
 typealias MutableOperationStatements = MutableMap<RealVariable, MutableTypeStatement>
 
@@ -218,7 +308,17 @@ fun MutableTypeStatements.addStatement(variable: RealVariable, statement: TypeSt
     put(variable, statement.asMutableStatement()) { it.apply { this += statement } }
 }
 
+fun MutableConstraintStatements.addStatement(variable: RealVariable, statement: ConstraintStatement) {
+    put(variable, statement.asMutableStatement()) { it.apply { this += statement } }
+}
+
 fun MutableTypeStatements.mergeTypeStatements(other: TypeStatements) {
+    other.forEach { (variable, info) ->
+        addStatement(variable, info)
+    }
+}
+
+fun MutableConstraintStatements.mergeConstraintStatements(other: ConstraintStatements) {
     other.forEach { (variable, info) ->
         addStatement(variable, info)
     }

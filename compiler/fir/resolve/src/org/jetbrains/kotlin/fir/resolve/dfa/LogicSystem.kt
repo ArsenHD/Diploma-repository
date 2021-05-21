@@ -5,6 +5,7 @@
 
 package org.jetbrains.kotlin.fir.resolve.dfa
 
+import org.jetbrains.kotlin.fir.symbols.impl.FirFunctionSymbol
 import org.jetbrains.kotlin.fir.types.ConeInferenceContext
 import org.jetbrains.kotlin.fir.types.ConeKotlinType
 import org.jetbrains.kotlin.fir.types.canBeNull
@@ -12,11 +13,12 @@ import org.jetbrains.kotlin.fir.types.commonSuperTypeOrNull
 
 abstract class Flow {
     abstract fun getTypeStatement(variable: RealVariable): TypeStatement?
+    abstract fun getRefinedTypePredicates(variable: RealVariable): ConstraintStatement?
     abstract fun getImplications(variable: DataFlowVariable): Collection<Implication>
     abstract fun getVariablesInTypeStatements(): Collection<RealVariable>
     abstract fun removeOperations(variable: DataFlowVariable): Collection<Implication>
 
-    abstract val directAliasMap: Map<RealVariable, RealVariableAndType>
+    abstract val directAliasMap: Map<RealVariable, RealVariableAndInfo>
     abstract val backwardsAliasMap: Map<RealVariable, List<RealVariable>>
     abstract val assignmentIndex: Map<RealVariable, Int>
 }
@@ -33,11 +35,13 @@ abstract class LogicSystem<FLOW : Flow>(protected val context: ConeInferenceCont
     abstract fun joinFlow(flows: Collection<FLOW>): FLOW
     abstract fun unionFlow(flows: Collection<FLOW>): FLOW
 
+    abstract fun addConstraintStatement(flow: FLOW, statement: ConstraintStatement)
     abstract fun addTypeStatement(flow: FLOW, statement: TypeStatement)
 
     abstract fun addImplication(flow: FLOW, implication: Implication)
 
     abstract fun removeTypeStatementsAboutVariable(flow: FLOW, variable: RealVariable)
+    abstract fun removeConstraintStatementsAboutVariable(flow: FLOW, variable: RealVariable)
     abstract fun removeLogicStatementsAboutVariable(flow: FLOW, variable: DataFlowVariable)
     abstract fun removeAliasInformationAboutVariable(flow: FLOW, variable: RealVariable)
 
@@ -57,7 +61,7 @@ abstract class LogicSystem<FLOW : Flow>(protected val context: ConeInferenceCont
         shouldRemoveSynthetics: Boolean,
     ): FLOW
 
-    abstract fun addLocalVariableAlias(flow: FLOW, alias: RealVariable, underlyingVariable: RealVariableAndType)
+    abstract fun addLocalVariableAlias(flow: FLOW, alias: RealVariable, underlyingVariable: RealVariableAndInfo)
     abstract fun removeLocalVariableAlias(flow: FLOW, alias: RealVariable)
 
     abstract fun recordNewAssignment(flow: FLOW, variable: RealVariable, index: Int)
@@ -76,7 +80,8 @@ abstract class LogicSystem<FLOW : Flow>(protected val context: ConeInferenceCont
     data class InfoForBooleanOperator(
         val conditionalFromLeft: Collection<Implication>,
         val conditionalFromRight: Collection<Implication>,
-        val knownFromRight: TypeStatements,
+        val typeKnownFromRight: TypeStatements,
+        val constraintKnownFromRight: ConstraintStatements,
     )
 
     abstract fun collectInfoForBooleanOperator(
@@ -87,20 +92,37 @@ abstract class LogicSystem<FLOW : Flow>(protected val context: ConeInferenceCont
     ): InfoForBooleanOperator
 
     abstract fun approveStatementsTo(
-        destination: MutableTypeStatements,
+        typeDestination: MutableTypeStatements,
+        constraintDestination: MutableConstraintStatements,
         flow: FLOW,
         approvedStatement: OperationStatement,
         statements: Collection<Implication>,
     )
 
     /**
-     * Recursively collects all TypeStatements approved by [approvedStatement] and all predicates
+     * Recursively collects all TypeStatements and ConstraintStatements approved by [approvedStatement] and all predicates
      *   that has been implied by it
      *   TODO: or not recursively?
      */
-    fun approveOperationStatement(flow: FLOW, approvedStatement: OperationStatement): Collection<TypeStatement> {
+    fun approveOperationStatement(flow: FLOW, approvedStatement: OperationStatement): Collection<ProvableStatement<*>> {
         val statements = getImplicationsWithVariable(flow, approvedStatement.variable)
-        return approveOperationStatement(flow, approvedStatement, statements).values
+        return approveOperationStatement(flow, approvedStatement, statements).let { it.first.values + it.second.values }
+    }
+
+    // TODO: move out common parts of this function and orForTypeStatements()
+    // TODO: to some other function
+    fun orForConstraintStatements(
+        left: ConstraintStatements,
+        right: ConstraintStatements
+    ): MutableConstraintStatements {
+        if (left.isNullOrEmpty() || right.isNotEmpty()) return mutableMapOf()
+        val map = mutableMapOf<RealVariable, MutableConstraintStatement>()
+        for (variable in left.keys.intersect(right.keys)) {
+            val leftStatement = left.getValue(variable)
+            val rightStatement = right.getValue(variable)
+            map[variable] = or(listOf(leftStatement, rightStatement))
+        }
+        return map
     }
 
     fun orForTypeStatements(
@@ -130,6 +152,23 @@ abstract class LogicSystem<FLOW : Flow>(protected val context: ConeInferenceCont
         return result
     }
 
+    private inline fun <T : AdditiveStatement<T>, E> manipulateStatements(
+        statements: Collection<T>,
+        op: (Collection<Set<E>>) -> MutableSet<E>,
+        first: (T) -> Set<E>,
+        second: (T) -> Set<E>,
+        result: (RealVariable, MutableSet<E>, MutableSet<E>) -> T
+    ): T {
+        require(statements.isNotEmpty())
+        statements.singleOrNull()?.let { return it }
+        val variable = statements.first().variable
+        require(variable is RealVariable)
+        assert(statements.all { it.variable == variable })
+        val positive = op.invoke(statements.map { first(it) })
+        val negative = op.invoke(statements.map { second(it) })
+        return result(variable, positive, negative)
+    }
+
     private inline fun manipulateTypeStatements(
         statements: Collection<TypeStatement>,
         op: (Collection<Set<ConeKotlinType>>) -> MutableSet<ConeKotlinType>
@@ -143,8 +182,35 @@ abstract class LogicSystem<FLOW : Flow>(protected val context: ConeInferenceCont
         return MutableTypeStatement(variable, exactType, exactNotType)
     }
 
-    protected fun or(statements: Collection<TypeStatement>): MutableTypeStatement =
-        manipulateTypeStatements(statements, ::orForTypes)
+    protected fun or(constraints: Collection<ConstraintStatement>): MutableConstraintStatement {
+        val constraintStatement = manipulateStatements(
+            constraints,
+            ::orForConstraints,
+            first = { it.satisfiedConstraints },
+            second = { it.unsatisfiedConstraints },
+            result = ::MutableConstraintStatement
+        )
+        return constraintStatement.toMutableConstraintStatement()
+    }
+
+    protected fun or(statements: Collection<TypeStatement>): MutableTypeStatement {
+        val typeStatement = manipulateStatements(
+            statements,
+            ::orForTypes,
+            first = { it.exactType },
+            second = { it.exactNotType },
+            result = ::MutableTypeStatement
+        )
+        return typeStatement.toMutableTypeStatement()
+    }
+
+    private fun orForConstraints(constraints: Collection<Set<FirFunctionSymbol<*>>>): MutableSet<FirFunctionSymbol<*>> {
+        if (constraints.isEmpty()) return mutableSetOf()
+        if (constraints.any { it.isEmpty() }) return mutableSetOf()
+        val first = constraints.first()
+        val commonConstraints = constraints.fold(first) { acc, element -> acc intersect element }
+        return commonConstraints.toMutableSet()
+    }
 
     private fun orForTypes(types: Collection<Set<ConeKotlinType>>): MutableSet<ConeKotlinType> {
         if (types.any { it.isEmpty() }) return mutableSetOf()
@@ -168,8 +234,31 @@ abstract class LogicSystem<FLOW : Flow>(protected val context: ConeInferenceCont
         return result
     }
 
-    protected fun and(statements: Collection<TypeStatement>): MutableTypeStatement =
-        manipulateTypeStatements(statements, ::andForTypes)
+    protected fun and(constraints: Collection<ConstraintStatement>): MutableConstraintStatement {
+        val constraintStatement = manipulateStatements(
+            constraints,
+            ::andForConstraints,
+            first = { it.satisfiedConstraints },
+            second = { it.unsatisfiedConstraints },
+            result = ::MutableConstraintStatement
+        )
+        return constraintStatement.toMutableConstraintStatement()
+    }
+
+    protected fun and(statements: Collection<TypeStatement>): MutableTypeStatement {
+        val typeStatement = manipulateStatements(
+            statements,
+            ::andForTypes,
+            first = { it.exactType },
+            second = { it.exactNotType },
+            result = ::MutableTypeStatement
+        )
+        return typeStatement.toMutableTypeStatement()
+    }
+
+    private fun andForConstraints(constraints: Collection<Set<FirFunctionSymbol<*>>>): MutableSet<FirFunctionSymbol<*>> {
+        return constraints.flatMapTo(mutableSetOf()) { it }
+    }
 
     private fun andForTypes(types: Collection<Set<ConeKotlinType>>): MutableSet<ConeKotlinType> {
         return types.flatMapTo(mutableSetOf()) { it }
@@ -180,10 +269,11 @@ fun <FLOW : Flow> LogicSystem<FLOW>.approveOperationStatement(
     flow: FLOW,
     approvedStatement: OperationStatement,
     statements: Collection<Implication>,
-): MutableTypeStatements {
-    return mutableMapOf<RealVariable, MutableTypeStatement>().apply {
-        approveStatementsTo(this, flow, approvedStatement, statements)
-    }
+): Pair<MutableTypeStatements, MutableConstraintStatements> {
+    val typeStatements: MutableTypeStatements = mutableMapOf()
+    val constraintStatements: MutableConstraintStatements = mutableMapOf()
+    approveStatementsTo(typeStatements, constraintStatements, flow, approvedStatement, statements)
+    return typeStatements to constraintStatements
 }
 
 /*
