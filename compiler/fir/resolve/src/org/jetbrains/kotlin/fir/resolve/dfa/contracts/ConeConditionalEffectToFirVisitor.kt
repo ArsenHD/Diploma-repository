@@ -20,7 +20,9 @@ import org.jetbrains.kotlin.fir.references.builder.buildSimpleNamedReference
 import org.jetbrains.kotlin.fir.resolve.substitution.ConeSubstitutor
 import org.jetbrains.kotlin.fir.resolve.providers.getClassDeclaredFunctionSymbols
 import org.jetbrains.kotlin.fir.resolve.symbolProvider
+import org.jetbrains.kotlin.fir.symbols.impl.ConeClassLikeLookupTagImpl
 import org.jetbrains.kotlin.fir.types.builder.buildResolvedTypeRef
+import org.jetbrains.kotlin.fir.types.impl.ConeClassLikeTypeImpl
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.Name
 import org.jetbrains.kotlin.types.ConstantValueKind
@@ -122,6 +124,13 @@ private class ConeConditionalEffectToFirVisitor(
                         }
                         argumentList = buildArgumentList {
                             arguments += buildVarargArgumentsExpression {
+                                varargElementType = buildResolvedTypeRef {
+                                    type = ConeClassLikeTypeImpl(
+                                        lookupTag = ConeClassLikeLookupTagImpl(ClassId.fromString("kotlin/reflect/KFunction")),
+                                        typeArguments = emptyArray(),
+                                        isNullable = false
+                                    )
+                                }
                                 arguments += references
                             }
                         }
