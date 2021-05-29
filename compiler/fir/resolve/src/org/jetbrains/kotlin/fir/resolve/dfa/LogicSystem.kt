@@ -11,23 +11,24 @@ import org.jetbrains.kotlin.fir.types.ConeKotlinType
 import org.jetbrains.kotlin.fir.types.canBeNull
 import org.jetbrains.kotlin.fir.types.commonSuperTypeOrNull
 
-abstract class Flow {
+abstract class Flow<T : Flow<T>> {
     abstract fun getTypeStatement(variable: RealVariable): TypeStatement?
     abstract fun getRefinedTypePredicates(variable: RealVariable): ConstraintStatement?
     abstract fun getImplications(variable: DataFlowVariable): Collection<Implication>
     abstract fun getVariablesInTypeStatements(): Collection<RealVariable>
-    abstract fun removeOperations(variable: DataFlowVariable): Collection<Implication>
+    abstract fun removeOperations(variable: DataFlowVariable): Pair<T, Collection<Implication>>
+    abstract fun copy(): T
 
     abstract val directAliasMap: Map<RealVariable, RealVariableAndInfo>
     abstract val backwardsAliasMap: Map<RealVariable, List<RealVariable>>
     abstract val assignmentIndex: Map<RealVariable, Int>
 }
 
-fun Flow.unwrapVariable(variable: RealVariable): RealVariable {
+fun <T : Flow<T>> Flow<T>.unwrapVariable(variable: RealVariable): RealVariable {
     return directAliasMap[variable]?.variable ?: variable
 }
 
-abstract class LogicSystem<FLOW : Flow>(protected val context: ConeInferenceContext) {
+abstract class LogicSystem<FLOW : Flow<FLOW>>(protected val context: ConeInferenceContext) {
     // ------------------------------- Flow operations -------------------------------
 
     abstract fun createEmptyFlow(): FLOW
@@ -35,15 +36,15 @@ abstract class LogicSystem<FLOW : Flow>(protected val context: ConeInferenceCont
     abstract fun joinFlow(flows: Collection<FLOW>): FLOW
     abstract fun unionFlow(flows: Collection<FLOW>): FLOW
 
-    abstract fun addConstraintStatement(flow: FLOW, statement: ConstraintStatement)
-    abstract fun addTypeStatement(flow: FLOW, statement: TypeStatement)
+    abstract fun addConstraintStatement(flow: FLOW, statement: ConstraintStatement): FLOW
+    abstract fun addTypeStatement(flow: FLOW, statement: TypeStatement): FLOW
 
-    abstract fun addImplication(flow: FLOW, implication: Implication)
+    abstract fun addImplication(flow: FLOW, implication: Implication): FLOW
 
-    abstract fun removeTypeStatementsAboutVariable(flow: FLOW, variable: RealVariable)
-    abstract fun removeConstraintStatementsAboutVariable(flow: FLOW, variable: RealVariable)
-    abstract fun removeLogicStatementsAboutVariable(flow: FLOW, variable: DataFlowVariable)
-    abstract fun removeAliasInformationAboutVariable(flow: FLOW, variable: RealVariable)
+    abstract fun removeTypeStatementsAboutVariable(flow: FLOW, variable: RealVariable): FLOW
+    abstract fun removeConstraintStatementsAboutVariable(flow: FLOW, variable: RealVariable): FLOW
+    abstract fun removeLogicStatementsAboutVariable(flow: FLOW, variable: DataFlowVariable): FLOW
+    abstract fun removeAliasInformationAboutVariable(flow: FLOW, variable: RealVariable): FLOW
 
     abstract fun translateVariableFromConditionInStatements(
         flow: FLOW,
@@ -52,7 +53,7 @@ abstract class LogicSystem<FLOW : Flow>(protected val context: ConeInferenceCont
         shouldRemoveOriginalStatements: Boolean,
         filter: (Implication) -> Boolean = { true },
         transform: (Implication) -> Implication? = { it },
-    )
+    ): FLOW
 
     abstract fun approveStatementsInsideFlow(
         flow: FLOW,
@@ -61,10 +62,10 @@ abstract class LogicSystem<FLOW : Flow>(protected val context: ConeInferenceCont
         shouldRemoveSynthetics: Boolean,
     ): FLOW
 
-    abstract fun addLocalVariableAlias(flow: FLOW, alias: RealVariable, underlyingVariable: RealVariableAndInfo)
-    abstract fun removeLocalVariableAlias(flow: FLOW, alias: RealVariable)
+    abstract fun addLocalVariableAlias(flow: FLOW, alias: RealVariable, underlyingVariable: RealVariableAndInfo): FLOW
+    abstract fun removeLocalVariableAlias(flow: FLOW, alias: RealVariable): FLOW
 
-    abstract fun recordNewAssignment(flow: FLOW, variable: RealVariable, index: Int)
+    abstract fun recordNewAssignment(flow: FLOW, variable: RealVariable, index: Int): FLOW
 
     protected abstract fun getImplicationsWithVariable(flow: FLOW, variable: DataFlowVariable): Collection<Implication>
 
@@ -72,8 +73,8 @@ abstract class LogicSystem<FLOW : Flow>(protected val context: ConeInferenceCont
 
     // ------------------------------- Callbacks for updating implicit receiver stack -------------------------------
 
-    abstract fun processUpdatedReceiverVariable(flow: FLOW, variable: RealVariable)
-    abstract fun updateAllReceivers(flow: FLOW)
+    abstract fun processUpdatedReceiverVariable(flow: FLOW, variable: RealVariable): FLOW
+    abstract fun updateAllReceivers(flow: FLOW): FLOW
 
     // ------------------------------- Public TypeStatement util functions -------------------------------
 
@@ -97,16 +98,17 @@ abstract class LogicSystem<FLOW : Flow>(protected val context: ConeInferenceCont
         flow: FLOW,
         approvedStatement: OperationStatement,
         statements: Collection<Implication>,
-    )
+    ): FLOW
 
     /**
      * Recursively collects all TypeStatements and ConstraintStatements approved by [approvedStatement] and all predicates
      *   that has been implied by it
      *   TODO: or not recursively?
      */
-    fun approveOperationStatement(flow: FLOW, approvedStatement: OperationStatement): Collection<ProvableStatement<*>> {
-        val statements = getImplicationsWithVariable(flow, approvedStatement.variable)
-        return approveOperationStatement(flow, approvedStatement, statements).let { it.first.values + it.second.values }
+    fun approveOperationStatement(flow: FLOW, approvedStatement: OperationStatement): Pair<FLOW, Collection<ProvableStatement<*>>> {
+        val newFlow = flow.copy()
+        val statements = getImplicationsWithVariable(newFlow, approvedStatement.variable)
+        return approveOperationStatement(newFlow, approvedStatement, statements).let { it.first to it.second.values + it.third.values }
     }
 
     // TODO: move out common parts of this function and orForTypeStatements()
@@ -265,15 +267,16 @@ abstract class LogicSystem<FLOW : Flow>(protected val context: ConeInferenceCont
     }
 }
 
-fun <FLOW : Flow> LogicSystem<FLOW>.approveOperationStatement(
+fun <FLOW : Flow<FLOW>> LogicSystem<FLOW>.approveOperationStatement(
     flow: FLOW,
     approvedStatement: OperationStatement,
     statements: Collection<Implication>,
-): Pair<MutableTypeStatements, MutableConstraintStatements> {
+): Triple<FLOW, MutableTypeStatements, MutableConstraintStatements> {
+    var newFlow = flow.copy()
     val typeStatements: MutableTypeStatements = mutableMapOf()
     val constraintStatements: MutableConstraintStatements = mutableMapOf()
-    approveStatementsTo(typeStatements, constraintStatements, flow, approvedStatement, statements)
-    return typeStatements to constraintStatements
+    newFlow = approveStatementsTo(typeStatements, constraintStatements, newFlow, approvedStatement, statements)
+    return Triple(newFlow, typeStatements, constraintStatements)
 }
 
 /*
@@ -282,14 +285,14 @@ fun <FLOW : Flow> LogicSystem<FLOW>.approveOperationStatement(
  *   2. b = x is String
  *   3. !b | b.not()   for Booleans
  */
-fun <F : Flow> LogicSystem<F>.replaceVariableFromConditionInStatements(
+fun <F : Flow<F>> LogicSystem<F>.replaceVariableFromConditionInStatements(
     flow: F,
     originalVariable: DataFlowVariable,
     newVariable: DataFlowVariable,
     filter: (Implication) -> Boolean = { true },
     transform: (Implication) -> Implication = { it },
-) {
-    translateVariableFromConditionInStatements(
+): F {
+    return translateVariableFromConditionInStatements(
         flow,
         originalVariable,
         newVariable,

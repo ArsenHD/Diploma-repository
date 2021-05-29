@@ -14,7 +14,7 @@ import org.jetbrains.kotlin.fir.visitors.FirVisitor
 
 class FirControlFlowGraphReferenceImpl(
     val controlFlowGraph: ControlFlowGraph,
-    val dataFlowInfo: DataFlowInfo? = null
+    val dataFlowInfo: DataFlowInfo<*>? = null
 ) : FirControlFlowGraphReference() {
     override val source: FirSourceElement? get() = null
 
@@ -25,10 +25,10 @@ class FirControlFlowGraphReferenceImpl(
     }
 }
 
-class DataFlowInfo(val variableStorage: VariableStorage, val flowOnNodes: Map<CFGNode<*>, Flow>)
+class DataFlowInfo<F : Flow<F>>(val variableStorage: VariableStorage, val flowOnNodes: Map<CFGNode<*>, Flow<F>>)
 
 val FirControlFlowGraphReference.controlFlowGraph: ControlFlowGraph?
     get() = (this as? FirControlFlowGraphReferenceImpl)?.controlFlowGraph
 
-val FirControlFlowGraphReference.dataFlowInfo: DataFlowInfo?
+val FirControlFlowGraphReference.dataFlowInfo: DataFlowInfo<*>?
     get() = (this as? FirControlFlowGraphReferenceImpl)?.dataFlowInfo

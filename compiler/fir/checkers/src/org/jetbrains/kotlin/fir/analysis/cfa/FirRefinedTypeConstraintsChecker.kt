@@ -48,7 +48,7 @@ object FirRefinedTypeConstraintsChecker : FirControlFlowChecker() {
 }
 
 data class UnsatisfiedConstraintsContext(
-    val dataFlowInfo: DataFlowInfo,
+    val dataFlowInfo: DataFlowInfo<*>,
     val incorrectArguments: MutableList<IncorrectArgument>
 )
 
@@ -75,7 +75,7 @@ class UnsatisfiedConstraintsFinder : ControlFlowGraphVisitor<Unit, UnsatisfiedCo
     override fun visitFunctionCallNode(node: FunctionCallNode, data: UnsatisfiedConstraintsContext) {
         val functionCall = node.fir
         val argumentMapping = functionCall.resolvedArgumentMapping ?: return
-        val symbol = node.fir.toResolvedCallableSymbol() as? FirNamedFunctionSymbol
+        val symbol = node.fir.toResolvedCallableSymbol() as? FirFunctionSymbol<*>
         val function = symbol?.fir ?: return
         val flow = data.dataFlowInfo.flowOnNodes[node] as? PersistentFlow ?: return
         val variableStorage = data.dataFlowInfo.variableStorage
@@ -95,7 +95,7 @@ class UnsatisfiedConstraintsFinder : ControlFlowGraphVisitor<Unit, UnsatisfiedCo
                     val constraints = refinedType.constraints
                         .toPredicates()
                         .toSet()
-                    if (constraints != expected) {
+                    if (expected.any { it !in constraints }) {
                         data.incorrectArguments += IncorrectFunctionCall(arg)
                     }
                 }
@@ -106,15 +106,16 @@ class UnsatisfiedConstraintsFinder : ControlFlowGraphVisitor<Unit, UnsatisfiedCo
                         ?.mapNotNull { it.toResolvedCallableSymbol() as? FirFunctionSymbol<*> }
                         ?.toSet()
                         ?: emptySet()
-                    val dataFlowVariable = variableStorage.getVariable(variable, flow) ?: continue // TODO: do we miss anything if we continue here?
-                    val constraints = when (dataFlowVariable) {
-                        is RealVariable -> {
-                            val constraintsFromFlow = flow.approvedConstraints[dataFlowVariable]?.satisfiedConstraints ?: emptySet()
-                            constraintsFromType union constraintsFromFlow
+                    val constraints = variableStorage.getVariable(variable, flow)?.let { dataFlowVariable ->
+                        when (dataFlowVariable) {
+                            is RealVariable -> {
+                                val constraintsFromFlow = flow.approvedConstraints[dataFlowVariable]?.satisfiedConstraints ?: emptySet()
+                                constraintsFromType union constraintsFromFlow
+                            }
+                            is SyntheticVariable -> constraintsFromType
                         }
-                        is SyntheticVariable -> constraintsFromType
-                    }
-                    if (constraints != expected) {
+                    } ?: emptySet()
+                    if (expected.any { it !in constraints }) {
                         data.incorrectArguments += IncorrectProperty(arg)
                     }
                 }

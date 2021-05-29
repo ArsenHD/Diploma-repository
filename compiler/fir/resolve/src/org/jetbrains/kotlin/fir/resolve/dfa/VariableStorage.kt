@@ -37,7 +37,7 @@ class VariableStorage(private val session: FirSession) {
     fun clear(): VariableStorage = VariableStorage(session)
 
     fun getOrCreateRealVariableWithoutUnwrappingAlias(
-        flow: Flow,
+        flow: Flow<*>,
         symbol: FirBasedSymbol<*>,
         fir: FirElement,
         stability: PropertyStability
@@ -48,7 +48,7 @@ class VariableStorage(private val session: FirSession) {
     }
 
     private fun getOrCreateRealVariable(
-        flow: Flow,
+        flow: Flow<*>,
         symbol: FirBasedSymbol<*>,
         fir: FirElement,
         stability: PropertyStability
@@ -66,7 +66,7 @@ class VariableStorage(private val session: FirSession) {
     }
 
     private fun getIdentifierBySymbol(
-        flow: Flow,
+        flow: Flow<*>,
         symbol: FirBasedSymbol<*>,
         fir: FirElement,
     ): Identifier {
@@ -82,7 +82,7 @@ class VariableStorage(private val session: FirSession) {
      * [originalFir] used for extracting expression under <when_subject> and extracting receiver
      */
     private fun createRealVariableInternal(
-        flow: Flow,
+        flow: Flow<*>,
         identifier: Identifier,
         originalFir: FirElement,
         stability: PropertyStability
@@ -109,13 +109,13 @@ class VariableStorage(private val session: FirSession) {
     }
 
     @JvmName("getOrCreateRealVariableOrNull")
-    fun getOrCreateRealVariable(flow: Flow, symbol: FirBasedSymbol<*>?, fir: FirElement): RealVariable? =
+    fun getOrCreateRealVariable(flow: Flow<*>, symbol: FirBasedSymbol<*>?, fir: FirElement): RealVariable? =
         symbol.getStability(fir)?.let { getOrCreateRealVariable(flow, symbol!!, fir, it) }
 
     fun createSyntheticVariable(fir: FirElement): SyntheticVariable =
         SyntheticVariable(fir, counter++).also { syntheticVariables[fir] = it }
 
-    fun getOrCreateVariable(flow: Flow, fir: FirElement): DataFlowVariable {
+    fun getOrCreateVariable(flow: Flow<*>, fir: FirElement): DataFlowVariable {
         val realFir = fir.unwrapElement()
         val symbol = realFir.symbol
         val stability = symbol.getStability(realFir)
@@ -126,14 +126,14 @@ class VariableStorage(private val session: FirSession) {
         }
     }
 
-    fun getRealVariableWithoutUnwrappingAlias(symbol: FirBasedSymbol<*>?, fir: FirElement, flow: Flow): RealVariable? {
+    fun getRealVariableWithoutUnwrappingAlias(symbol: FirBasedSymbol<*>?, fir: FirElement, flow: Flow<*>): RealVariable? {
         val realFir = fir.unwrapElement()
         return symbol.takeIf { it.getStability(realFir) != null }?.let {
             _realVariables[getIdentifierBySymbol(flow, it, realFir.unwrapElement())]
         }
     }
 
-    fun getRealVariable(symbol: FirBasedSymbol<*>?, fir: FirElement, flow: Flow): RealVariable? {
+    fun getRealVariable(symbol: FirBasedSymbol<*>?, fir: FirElement, flow: Flow<*>): RealVariable? {
         return getRealVariableWithoutUnwrappingAlias(symbol, fir, flow)?.let { flow.unwrapVariable(it) }
     }
 
@@ -141,7 +141,7 @@ class VariableStorage(private val session: FirSession) {
         return syntheticVariables[fir.unwrapElement()]
     }
 
-    fun getVariable(fir: FirElement, flow: Flow): DataFlowVariable? {
+    fun getVariable(fir: FirElement, flow: Flow<*>): DataFlowVariable? {
         val realFir = fir.unwrapElement()
         val symbol = realFir.symbol
         val stability = symbol.getStability(fir)

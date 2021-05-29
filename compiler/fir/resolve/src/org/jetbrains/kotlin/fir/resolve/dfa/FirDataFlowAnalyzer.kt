@@ -42,7 +42,7 @@ import org.jetbrains.kotlin.types.ConstantValueKind
 import org.jetbrains.kotlin.utils.addIfNotNull
 import org.jetbrains.kotlin.utils.addToStdlib.firstIsInstanceOrNull
 
-class DataFlowAnalyzerContext<FLOW : Flow>(
+class DataFlowAnalyzerContext<FLOW : Flow<FLOW>>(
     val graphBuilder: ControlFlowGraphBuilder,
     variableStorage: VariableStorage,
     flowOnNodes: MutableMap<CFGNode<*>, FLOW>,
@@ -74,7 +74,7 @@ class DataFlowAnalyzerContext<FLOW : Flow>(
     }
 
     companion object {
-        fun <FLOW : Flow> empty(session: FirSession): DataFlowAnalyzerContext<FLOW> =
+        fun <FLOW : Flow<FLOW>> empty(session: FirSession): DataFlowAnalyzerContext<FLOW> =
             DataFlowAnalyzerContext(
                 ControlFlowGraphBuilder(), VariableStorage(session),
                 mutableMapOf(), mutableMapOf(), PreliminaryLoopVisitor()
@@ -83,7 +83,7 @@ class DataFlowAnalyzerContext<FLOW : Flow>(
 }
 
 @OptIn(DfaInternals::class)
-abstract class FirDataFlowAnalyzer<FLOW : Flow>(
+abstract class FirDataFlowAnalyzer<FLOW : Flow<FLOW>>(
     protected val components: FirAbstractBodyResolveTransformer.BodyResolveTransformerComponents,
     private val context: DataFlowAnalyzerContext<FLOW>
 ) {
@@ -103,11 +103,12 @@ abstract class FirDataFlowAnalyzer<FLOW : Flow>(
 
                 override val logicSystem: PersistentLogicSystem =
                     object : PersistentLogicSystem(components.session.inferenceComponents.ctx) {
-                        override fun processUpdatedReceiverVariable(flow: PersistentFlow, variable: RealVariable) {
+                        override fun processUpdatedReceiverVariable(flow: PersistentFlow, variable: RealVariable): PersistentFlow {
+                            val newFlow = flow.copy()
                             val symbol = variable.identifier.symbol
 
-                            val index = receiverStack.getReceiverIndex(symbol) ?: return
-                            val info = flow.getTypeStatement(variable)
+                            val index = receiverStack.getReceiverIndex(symbol) ?: return newFlow
+                            val info = newFlow.getTypeStatement(variable)
 
                             if (info == null) {
                                 receiverStack.replaceReceiverType(index, receiverStack.getOriginalType(index))
@@ -117,14 +118,17 @@ abstract class FirDataFlowAnalyzer<FLOW : Flow>(
                                 }
                                 receiverStack.replaceReceiverType(index, context.intersectTypesOrNull(types)!!)
                             }
+                            return newFlow
                         }
 
-                        override fun updateAllReceivers(flow: PersistentFlow) {
+                        override fun updateAllReceivers(flow: PersistentFlow): PersistentFlow {
+                            var newFlow = flow.copy()
                             receiverStack.forEach {
-                                variableStorage.getRealVariable(it.boundSymbol, it.receiverExpression, flow)?.let { variable ->
-                                    processUpdatedReceiverVariable(flow, variable)
+                                variableStorage.getRealVariable(it.boundSymbol, it.receiverExpression, newFlow)?.let { variable ->
+                                    newFlow = processUpdatedReceiverVariable(newFlow, variable)
                                 }
                             }
+                            return newFlow
                         }
 
                         override fun ConeKotlinType.isAcceptableForSmartcast(): Boolean {
@@ -385,7 +389,7 @@ abstract class FirDataFlowAnalyzer<FLOW : Flow>(
         if (typeOperatorCall.operation !in FirOperation.TYPES) return
         val type = typeOperatorCall.conversionTypeRef.coneType
         val operandVariable = variableStorage.getOrCreateVariable(node.previousFlow, typeOperatorCall.argument)
-        val flow = node.flow
+        var flow = node.flow
 
         when (val operation = typeOperatorCall.operation) {
             FirOperation.IS, FirOperation.NOT_IS -> {
@@ -399,29 +403,29 @@ abstract class FirDataFlowAnalyzer<FLOW : Flow>(
                     fun chooseInfo(trueBranch: Boolean) =
                         if ((typeOperatorCall.operation == FirOperation.IS) == trueBranch) hasTypeInfo else hasNotTypeInfo
 
-                    flow.addImplication((expressionVariable eq true) implies chooseInfo(true))
-                    flow.addImplication((expressionVariable eq false) implies chooseInfo(false))
+                    flow = flow.addImplication((expressionVariable eq true) implies chooseInfo(true))
+                    flow = flow.addImplication((expressionVariable eq false) implies chooseInfo(false))
 
                     if (operation == FirOperation.NOT_IS && type == nullableNothing) {
-                        flow.addTypeStatement(operandVariable typeEq any)
+                        flow = flow.addTypeStatement(operandVariable typeEq any)
                     }
                     if (isNotNullCheck) {
-                        flow.addImplication((expressionVariable eq isRegularIs) implies (operandVariable typeEq any))
-                        flow.addImplication((expressionVariable eq isRegularIs) implies (operandVariable notEq null))
+                        flow = flow.addImplication((expressionVariable eq isRegularIs) implies (operandVariable typeEq any))
+                        flow = flow.addImplication((expressionVariable eq isRegularIs) implies (operandVariable notEq null))
                     }
 
                 } else {
                     if (isNotNullCheck) {
-                        flow.addImplication((expressionVariable eq isRegularIs) implies (operandVariable notEq null))
+                        flow = flow.addImplication((expressionVariable eq isRegularIs) implies (operandVariable notEq null))
                     }
                 }
             }
 
             FirOperation.AS -> {
                 if (operandVariable.isReal()) {
-                    flow.addTypeStatement(operandVariable typeEq type)
+                    flow = flow.addTypeStatement(operandVariable typeEq type)
                 }
-                logicSystem.approveStatementsInsideFlow(
+                flow = logicSystem.approveStatementsInsideFlow(
                     flow,
                     operandVariable notEq null,
                     shouldRemoveSynthetics = true,
@@ -432,11 +436,11 @@ abstract class FirDataFlowAnalyzer<FLOW : Flow>(
             FirOperation.SAFE_AS -> {
                 val expressionVariable = variableStorage.createSyntheticVariable(typeOperatorCall)
                 if (operandVariable.isReal()) {
-                    flow.addImplication((expressionVariable notEq null) implies (operandVariable typeEq type))
-                    flow.addImplication((expressionVariable eq null) implies (operandVariable typeNotEq type))
+                    flow = flow.addImplication((expressionVariable notEq null) implies (operandVariable typeEq type))
+                    flow = flow.addImplication((expressionVariable eq null) implies (operandVariable typeNotEq type))
                 }
                 if (type.nullability == ConeNullability.NOT_NULL) {
-                    flow.addImplication((expressionVariable notEq null) implies (operandVariable notEq null))
+                    flow = flow.addImplication((expressionVariable notEq null) implies (operandVariable notEq null))
                 }
             }
 
@@ -474,12 +478,12 @@ abstract class FirDataFlowAnalyzer<FLOW : Flow>(
     ) {
         val isEq = operation.isEq()
         val expressionVariable = variableStorage.createSyntheticVariable(node.fir)
-        val flow = node.flow
+        var flow = node.flow
         val operandVariable = variableStorage.getOrCreateVariable(node.previousFlow, operand)
         // expression == const -> expression != null
-        flow.addImplication((expressionVariable eq isEq) implies (operandVariable notEq null))
+        flow = flow.addImplication((expressionVariable eq isEq) implies (operandVariable notEq null))
         if (operandVariable.isReal()) {
-            flow.addImplication((expressionVariable eq isEq) implies (operandVariable typeEq any))
+            flow = flow.addImplication((expressionVariable eq isEq) implies (operandVariable typeEq any))
         }
 
         // propagating facts for (... == true) and (... == false)
@@ -488,7 +492,7 @@ abstract class FirDataFlowAnalyzer<FLOW : Flow>(
                 val constValue = const.value as Boolean
                 val shouldInvert = isEq xor constValue
 
-                logicSystem.translateVariableFromConditionInStatements(
+                flow = logicSystem.translateVariableFromConditionInStatements(
                     flow,
                     operandVariable,
                     expressionVariable,
@@ -528,6 +532,7 @@ abstract class FirDataFlowAnalyzer<FLOW : Flow>(
                 // Inconclusive if the user code compares with other constants.
             }
         }
+        node.flow = flow
     }
 
     private fun processEq(
@@ -573,7 +578,7 @@ abstract class FirDataFlowAnalyzer<FLOW : Flow>(
         operation: FirOperation,
         shouldAddImplicationForStatement: (OperationStatement) -> Boolean = { true }
     ) {
-        val flow = node.flow
+        var flow = node.flow
         val expressionVariable = variableStorage.createSyntheticVariable(node.fir)
         val operandVariable = variableStorage.getOrCreateVariable(node.previousFlow, operand)
 
@@ -584,35 +589,38 @@ abstract class FirDataFlowAnalyzer<FLOW : Flow>(
             false -> operandVariable notEq null
         }
 
-        logicSystem.approveOperationStatement(flow, predicate).forEach { effect ->
-            if (shouldAddImplicationForStatement(expressionVariable eq true)) {
-                flow.addImplication((expressionVariable eq true) implies effect)
-            }
-            if (shouldAddImplicationForStatement(expressionVariable eq false)) {
-                flow.addImplication((expressionVariable eq false) implies effect.invert())
+        logicSystem.approveOperationStatement(flow, predicate).let { (newFlow, effects) ->
+            flow = newFlow
+            effects.forEach { effect ->
+                if (shouldAddImplicationForStatement(expressionVariable eq true)) {
+                    flow = flow.addImplication((expressionVariable eq true) implies effect)
+                }
+                if (shouldAddImplicationForStatement(expressionVariable eq false)) {
+                    flow = flow.addImplication((expressionVariable eq false) implies effect.invert())
+                }
             }
         }
 
         if (shouldAddImplicationForStatement(expressionVariable eq isEq)) {
-            flow.addImplication((expressionVariable eq isEq) implies (operandVariable eq null))
+            flow = flow.addImplication((expressionVariable eq isEq) implies (operandVariable eq null))
         }
         if (shouldAddImplicationForStatement(expressionVariable notEq isEq)) {
-            flow.addImplication((expressionVariable notEq isEq) implies (operandVariable notEq null))
+            flow = flow.addImplication((expressionVariable notEq isEq) implies (operandVariable notEq null))
         }
 
         if (operandVariable.isReal()) {
             if (shouldAddImplicationForStatement(expressionVariable eq isEq)) {
-                flow.addImplication((expressionVariable eq isEq) implies (operandVariable typeNotEq any))
+                flow = flow.addImplication((expressionVariable eq isEq) implies (operandVariable typeNotEq any))
             }
             if (shouldAddImplicationForStatement(expressionVariable notEq isEq)) {
-                flow.addImplication((expressionVariable notEq isEq) implies (operandVariable typeEq any))
+                flow = flow.addImplication((expressionVariable notEq isEq) implies (operandVariable typeEq any))
             }
 
             if (shouldAddImplicationForStatement(expressionVariable eq !isEq)) {
-                flow.addImplication((expressionVariable eq !isEq) implies (operandVariable typeNotEq nullableNothing))
+                flow = flow.addImplication((expressionVariable eq !isEq) implies (operandVariable typeNotEq nullableNothing))
             }
             if (shouldAddImplicationForStatement(expressionVariable notEq !isEq)) {
-                flow.addImplication((expressionVariable notEq !isEq) implies (operandVariable typeEq nullableNothing))
+                flow = flow.addImplication((expressionVariable notEq !isEq) implies (operandVariable typeEq nullableNothing))
             }
         }
         node.flow = flow
@@ -621,7 +629,7 @@ abstract class FirDataFlowAnalyzer<FLOW : Flow>(
     private fun processIdentity(
         node: EqualityOperatorCallNode, leftOperand: FirExpression, rightOperand: FirExpression, operation: FirOperation
     ) {
-        val flow = node.flow
+        var flow = node.flow
         val expressionVariable = variableStorage.getOrCreateVariable(node.previousFlow, node.fir)
         val leftOperandVariable = variableStorage.getOrCreateVariable(node.previousFlow, leftOperand)
         val rightOperandVariable = variableStorage.getOrCreateVariable(node.previousFlow, rightOperand)
@@ -630,13 +638,13 @@ abstract class FirDataFlowAnalyzer<FLOW : Flow>(
         val isEq = operation.isEq()
 
         if (leftOperandVariable.isReal()) {
-            flow.addImplication((expressionVariable eq isEq) implies (leftOperandVariable typeEq rightOperandType))
-            flow.addImplication((expressionVariable notEq isEq) implies (leftOperandVariable typeNotEq rightOperandType))
+            flow = flow.addImplication((expressionVariable eq isEq) implies (leftOperandVariable typeEq rightOperandType))
+            flow = flow.addImplication((expressionVariable notEq isEq) implies (leftOperandVariable typeNotEq rightOperandType))
         }
 
         if (rightOperandVariable.isReal()) {
-            flow.addImplication((expressionVariable eq isEq) implies (rightOperandVariable typeEq leftOperandType))
-            flow.addImplication((expressionVariable notEq isEq) implies (rightOperandVariable typeNotEq leftOperandType))
+            flow = flow.addImplication((expressionVariable eq isEq) implies (rightOperandVariable typeEq leftOperandType))
+            flow = flow.addImplication((expressionVariable notEq isEq) implies (rightOperandVariable typeNotEq leftOperandType))
         }
 
         node.flow = flow
@@ -656,13 +664,15 @@ abstract class FirDataFlowAnalyzer<FLOW : Flow>(
         node.mergeIncomingFlow()
         val argument = checkNotNullCall.argument
         variableStorage.getOrCreateRealVariable(node.previousFlow, argument.symbol, argument)?.let { operandVariable ->
-            node.flow.addTypeStatement(operandVariable typeEq any)
-            logicSystem.approveStatementsInsideFlow(
-                node.flow,
+            var flow = node.flow
+            flow = flow.addTypeStatement(operandVariable typeEq any)
+            flow = logicSystem.approveStatementsInsideFlow(
+                flow,
                 operandVariable notEq null,
                 shouldRemoveSynthetics = true,
                 shouldForkFlow = false
             )
+            node.flow = flow
         }
         unionNode?.let { unionFlowFromArguments(it) }
     }
@@ -779,10 +789,11 @@ abstract class FirDataFlowAnalyzer<FLOW : Flow>(
             fir.isVar && fir.name in reassignedNames
         }.values
         if (possiblyChangedVariables.isEmpty()) return
-        val flow = node.flow
+        var flow = node.flow
         for (variable in possiblyChangedVariables) {
-            flow.removeAllAboutVariable(variable)
+            flow = flow.removeAllAboutVariable(variable)
         }
+        node.flow = flow
     }
 
     private fun exitCapturingStatement(statement: FirStatement) {
@@ -885,7 +896,7 @@ abstract class FirDataFlowAnalyzer<FLOW : Flow>(
                 if (shouldFork) {
                     flow = logicSystem.forkFlow(flow)
                 }
-                flow.addTypeStatement(variable typeEq type)
+                flow = flow.addTypeStatement(variable typeEq type)
             }
             flow = logicSystem.approveStatementsInsideFlow(
                 flow,
@@ -900,7 +911,7 @@ abstract class FirDataFlowAnalyzer<FLOW : Flow>(
 
     fun exitSafeCall(safeCall: FirSafeCallExpression) {
         val node = graphBuilder.exitSafeCall().mergeIncomingFlow()
-        val flow = node.flow
+        var flow = node.flow
 
         val variable = variableStorage.getOrCreateVariable(flow, safeCall)
         val receiverVariable = when (variable) {
@@ -908,10 +919,11 @@ abstract class FirDataFlowAnalyzer<FLOW : Flow>(
             is RealVariable -> variable.explicitReceiverVariable ?: return
             is SyntheticVariable -> variableStorage.getOrCreateVariable(flow, safeCall.receiver)
         }
-        logicSystem.addImplication(flow, (variable notEq null) implies (receiverVariable notEq null))
+        flow = logicSystem.addImplication(flow, (variable notEq null) implies (receiverVariable notEq null))
         if (receiverVariable.isReal()) {
-            logicSystem.addImplication(flow, (variable notEq null) implies (receiverVariable typeEq any))
+            flow = logicSystem.addImplication(flow, (variable notEq null) implies (receiverVariable typeEq any))
         }
+        node.flow = flow
     }
 
     fun exitResolvedQualifierNode(resolvedQualifier: FirResolvedQualifier) {
@@ -948,18 +960,19 @@ abstract class FirDataFlowAnalyzer<FLOW : Flow>(
         processConditionalContract(functionCall)
     }
 
-    private fun processSatisfiesPredicates(flow: FLOW, condition: FirExpression, operand: FirExpression, constraints: List<FirNamedFunctionSymbol>): DataFlowVariable {
+    private fun processSatisfiesPredicates(flow: FLOW, condition: FirExpression, operand: FirExpression, constraints: List<FirNamedFunctionSymbol>): Pair<FLOW, DataFlowVariable> {
+        var newFlow = flow.copy()
         val expressionVariable = variableStorage.createSyntheticVariable(condition)
-        val operandVariable = variableStorage.getOrCreateVariable(flow, operand)
+        val operandVariable = variableStorage.getOrCreateVariable(newFlow, operand)
 
         if (operandVariable !is RealVariable) {
             error("Operand in satisfies expression must be stable: $operand")
         }
 
-        flow.addImplication((expressionVariable eq true) implies (operandVariable satisfies  constraints))
-        flow.addImplication((expressionVariable eq false) implies (operandVariable doesNotSatisfy constraints))
+        newFlow = newFlow.addImplication((expressionVariable eq true) implies (operandVariable satisfies  constraints))
+        newFlow = newFlow.addImplication((expressionVariable eq false) implies (operandVariable doesNotSatisfy constraints))
 
-        return expressionVariable
+        return newFlow to expressionVariable
     }
 
     fun exitDelegatedConstructorCall(call: FirDelegatedConstructorCall, callCompleted: Boolean) {
@@ -976,9 +989,12 @@ abstract class FirDataFlowAnalyzer<FLOW : Flow>(
 
 
     private fun unionFlowFromArguments(node: UnionFunctionCallArgumentsNode) {
-        node.flow = logicSystem.unionFlow(node.previousNodes.map { it.flow }).also {
-            logicSystem.updateAllReceivers(it)
-        }
+        var flow = logicSystem.unionFlow(node.previousNodes.map { it.flow })
+        flow = logicSystem.updateAllReceivers(flow)
+        node.flow = flow
+//        node.flow = logicSystem.unionFlow(node.previousNodes.map { it.flow }).also {
+//            logicSystem.updateAllReceivers(it)
+//        }
     }
 
     private fun processConditionalContract(qualifiedAccess: FirQualifiedAccess) {
@@ -1013,7 +1029,7 @@ abstract class FirDataFlowAnalyzer<FLOW : Flow>(
 
         contractDescriptionVisitingMode = true
         graphBuilder.enterContract(qualifiedAccess).mergeIncomingFlow()
-        val lastFlow = graphBuilder.lastNode.flow
+        var lastFlow = graphBuilder.lastNode.flow
         val functionCallVariable = variableStorage.getOrCreateVariable(lastFlow, qualifiedAccess)
         for (conditionalEffect in conditionalEffects) {
             val fir = conditionalEffect.buildContractFir(argumentsMapping, substitutor, components.session) ?: continue
@@ -1022,16 +1038,20 @@ abstract class FirDataFlowAnalyzer<FLOW : Flow>(
             val argumentVariable = if (condition is ConeSatisfiesPredicate) {
                 val index = condition.value.parameterIndex
                 val operand = argumentsMapping[index] ?: continue // TODO: is continue ok here?
-                processSatisfiesPredicates(lastFlow, condition.satisfiesCall, operand, condition.predicates)
+                val (newFlow, variable) = processSatisfiesPredicates(lastFlow, condition.satisfiesCall, operand, condition.predicates)
+                lastFlow = newFlow
+                variable
             } else {
                 fir.transformSingle(components.transformer, ResolutionMode.ContextDependent)
+                lastFlow = graphBuilder.lastNode.flow
                 variableStorage.getOrCreateVariable(lastFlow, fir)
             }
             val lastNode = graphBuilder.lastNode
             when (val value = effect.value) {
                 ConeConstantReference.WILDCARD -> {
                     lastNode.flow = logicSystem.approveStatementsInsideFlow(
-                        lastNode.flow,
+//                        lastNode.flow,
+                        lastFlow,
                         argumentVariable eq true,
                         shouldForkFlow = false,
                         shouldRemoveSynthetics = true
@@ -1039,8 +1059,9 @@ abstract class FirDataFlowAnalyzer<FLOW : Flow>(
                 }
 
                 is ConeBooleanConstantReference -> {
-                    logicSystem.replaceVariableFromConditionInStatements(
-                        lastNode.flow,
+                    lastNode.flow = logicSystem.replaceVariableFromConditionInStatements(
+//                        lastNode.flow,
+                        lastFlow,
                         argumentVariable,
                         functionCallVariable,
                         filter = { it.condition.operation == Operation.EqTrue },
@@ -1055,8 +1076,9 @@ abstract class FirDataFlowAnalyzer<FLOW : Flow>(
                 }
 
                 ConeConstantReference.NOT_NULL, ConeConstantReference.NULL -> {
-                    logicSystem.replaceVariableFromConditionInStatements(
-                        lastNode.flow,
+                    lastNode.flow = logicSystem.replaceVariableFromConditionInStatements(
+//                        lastNode.flow,
+                        lastFlow,
                         argumentVariable,
                         functionCallVariable,
                         filter = { it.condition.operation == Operation.EqTrue },
@@ -1103,7 +1125,7 @@ abstract class FirDataFlowAnalyzer<FLOW : Flow>(
         property: FirProperty,
         assignment: FirVariableAssignment?
     ) {
-        val flow = node.flow
+        var flow = node.flow
         val propertyVariable = variableStorage.getOrCreateRealVariableWithoutUnwrappingAlias(
             flow,
             property.symbol,
@@ -1112,9 +1134,9 @@ abstract class FirDataFlowAnalyzer<FLOW : Flow>(
         )
         val isAssignment = assignment != null
         if (isAssignment) {
-            logicSystem.removeLocalVariableAlias(flow, propertyVariable)
-            flow.removeAllAboutVariable(propertyVariable)
-            logicSystem.recordNewAssignment(flow, propertyVariable, context.newAssignmentIndex())
+            flow = logicSystem.removeLocalVariableAlias(flow, propertyVariable)
+            flow = flow.removeAllAboutVariable(propertyVariable)
+            flow = logicSystem.recordNewAssignment(flow, propertyVariable, context.newAssignmentIndex())
         }
 
         variableStorage.getOrCreateRealVariable(flow, initializer.symbol, initializer)?.let { initializerVariable ->
@@ -1126,13 +1148,13 @@ abstract class FirDataFlowAnalyzer<FLOW : Flow>(
             if (isInitializerStable && (propertyVariable.stability == PropertyStability.STABLE_VALUE || propertyVariable.stability == PropertyStability.LOCAL_VAR)) {
                 val type = initializer.coneType.toSymbol(components.session)?.fir as? FirRefinedType
                 val constraints = type?.constraintSymbols?.toSet() ?: emptySet()
-                logicSystem.addLocalVariableAlias(
+                flow = logicSystem.addLocalVariableAlias(
                     flow, propertyVariable,
                     RealVariableAndInfo(initializerVariable, initializer.coneType, constraints)
                 )
                 // node.flow.addImplication((propertyVariable notEq null) implies (initializerVariable notEq null))
             } else {
-                logicSystem.replaceVariableFromConditionInStatements(flow, initializerVariable, propertyVariable)
+                flow = logicSystem.replaceVariableFromConditionInStatements(flow, initializerVariable, propertyVariable)
             }
         }
 
@@ -1146,12 +1168,13 @@ abstract class FirDataFlowAnalyzer<FLOW : Flow>(
                  *      x.length
                  *   }
                  */
-            logicSystem.replaceVariableFromConditionInStatements(flow, initializerVariable, propertyVariable)
+            flow = logicSystem.replaceVariableFromConditionInStatements(flow, initializerVariable, propertyVariable)
         }
 
         if (isAssignment) {
-            flow.addTypeStatement(propertyVariable typeEq initializer.typeRef.coneType)
+            flow = flow.addTypeStatement(propertyVariable typeEq initializer.typeRef.coneType)
         }
+        node.flow = flow
     }
 
 
@@ -1212,9 +1235,9 @@ abstract class FirDataFlowAnalyzer<FLOW : Flow>(
 
         // Naming for all variables was chosen in assumption that we processing && expression
         val flowFromLeft = node.leftOperandNode.flow
-        val flowFromRight = node.rightOperandNode.flow
+        var flowFromRight = node.rightOperandNode.flow
 
-        val flow = node.mergeIncomingFlow().flow
+        var flow = node.mergeIncomingFlow().flow
 
         /*
          * TODO: Here we should handle case when one of arguments is dead (e.g. in cases `false && expr` or `true || expr`)
@@ -1233,7 +1256,7 @@ abstract class FirDataFlowAnalyzer<FLOW : Flow>(
              *   a && return => a == false
              *   a || return => a == true
              */
-            logicSystem.approveStatementsInsideFlow(
+            flow = logicSystem.approveStatementsInsideFlow(
                 flow,
                 leftVariable eq !isAnd,
                 shouldForkFlow = false,
@@ -1252,14 +1275,14 @@ abstract class FirDataFlowAnalyzer<FLOW : Flow>(
             // left || right == False
             val typeApprovedIfTrue: MutableTypeStatements = mutableMapOf()
             val constraintApprovedIfTrue: MutableConstraintStatements = mutableMapOf()
-            logicSystem.approveStatementsTo(
+            flowFromRight = logicSystem.approveStatementsTo(
                 typeApprovedIfTrue,
                 constraintApprovedIfTrue,
                 flowFromRight,
                 leftVariable eq bothEvaluated,
                 conditionalFromLeft
             )
-            logicSystem.approveStatementsTo(
+            flowFromRight = logicSystem.approveStatementsTo(
                 typeApprovedIfTrue,
                 constraintApprovedIfTrue,
                 flowFromRight,
@@ -1276,26 +1299,26 @@ abstract class FirDataFlowAnalyzer<FLOW : Flow>(
 
             val approvedIfTrue = typeApprovedIfTrue.values + constraintApprovedIfTrue.values
             approvedIfTrue.forEach { info ->
-                flow.addImplication((operatorVariable eq bothEvaluated) implies info)
+                flow = flow.addImplication((operatorVariable eq bothEvaluated) implies info)
             }
 
             // left && right == False
             // left || right == True
             val typeApprovedIfFalse: MutableTypeStatements = mutableMapOf()
             val constraintApprovedIfFalse: MutableConstraintStatements = mutableMapOf()
-            val (typeIfLeftIsFalse, constraintIfLeftIsFalse) =
+            val (_, typeIfLeftIsFalse, constraintIfLeftIsFalse) =
                 logicSystem.approveOperationStatement(flowFromLeft, leftVariable eq onlyLeftEvaluated, conditionalFromLeft)
-            val (typeIfRightIsFalse, constraintIfRightIsFalse) =
+            val (_, typeIfRightIsFalse, constraintIfRightIsFalse) =
                 logicSystem.approveOperationStatement(flowFromRight, rightVariable eq onlyLeftEvaluated, conditionalFromRight)
             typeApprovedIfFalse.mergeTypeStatements(logicSystem.orForTypeStatements(typeIfLeftIsFalse, typeIfRightIsFalse))
             constraintApprovedIfFalse.mergeConstraintStatements(logicSystem.orForConstraintStatements(constraintIfLeftIsFalse, constraintIfRightIsFalse))
             val approvedIfFalse = typeApprovedIfFalse.values + constraintApprovedIfFalse.values
             approvedIfFalse.forEach { info ->
-                flow.addImplication((operatorVariable eq onlyLeftEvaluated) implies info)
+                flow = flow.addImplication((operatorVariable eq onlyLeftEvaluated) implies info)
             }
         }
 
-        logicSystem.updateAllReceivers(flow)
+        flow = logicSystem.updateAllReceivers(flow)
         node.flow = flow
 
         variableStorage.removeSyntheticVariable(leftVariable)
@@ -1307,7 +1330,7 @@ abstract class FirDataFlowAnalyzer<FLOW : Flow>(
         val previousFlow = node.previousFlow
         val booleanExpressionVariable = variableStorage.getOrCreateVariable(previousFlow, node.firstPreviousNode.fir)
         val variable = variableStorage.getOrCreateVariable(previousFlow, functionCall)
-        logicSystem.replaceVariableFromConditionInStatements(
+        node.flow = logicSystem.replaceVariableFromConditionInStatements(
             node.flow,
             booleanExpressionVariable,
             variable,
@@ -1372,26 +1395,26 @@ abstract class FirDataFlowAnalyzer<FLOW : Flow>(
     fun exitElvisLhs(elvisExpression: FirElvisExpression) {
         val (lhsExitNode, lhsIsNotNullNode, rhsEnterNode) = graphBuilder.exitElvisLhs(elvisExpression)
         lhsExitNode.mergeIncomingFlow()
-        val flow = lhsExitNode.flow
+        var flow = lhsExitNode.flow
         val lhsVariable = variableStorage.getOrCreateVariable(flow, elvisExpression.lhs)
-        lhsIsNotNullNode.flow = logicSystem.approveStatementsInsideFlow(
+        flow = logicSystem.approveStatementsInsideFlow(
             flow,
             lhsVariable notEq null,
             shouldForkFlow = true,
             shouldRemoveSynthetics = false
-        ).also {
-            if (lhsVariable.isReal()) {
-                it.addTypeStatement(lhsVariable typeEq any)
-            }
+        )
+        if (lhsVariable.isReal()) {
+            flow = flow.addTypeStatement(lhsVariable typeEq any)
         }
-        rhsEnterNode.flow = logicSystem.approveStatementsInsideFlow(
+        lhsIsNotNullNode.flow = flow
+        flow = logicSystem.approveStatementsInsideFlow(
             flow,
             lhsVariable eq null,
             shouldForkFlow = true,
             shouldRemoveSynthetics = false
-        ).also {
-            logicSystem.updateAllReceivers(it)
-        }
+        )
+        flow = logicSystem.updateAllReceivers(flow)
+        rhsEnterNode.flow = flow
     }
 
     fun exitElvis(elvisExpression: FirElvisExpression) {
@@ -1402,14 +1425,15 @@ abstract class FirDataFlowAnalyzer<FLOW : Flow>(
         if (rhs is FirConstExpression<*> && rhs.kind == ConstantValueKind.Boolean) {
             if (lhs.typeRef.coneType.classId != StandardClassIds.Boolean) return
 
-            val flow = node.flow
+            var flow = node.flow
             // a ?: false == true -> a != null
             // a ?: true == false -> a != null
             val elvisVariable = variableStorage.getOrCreateVariable(flow, elvisExpression)
             val lhsVariable = variableStorage.getOrCreateVariable(flow, lhs)
 
             val value = rhs.value as Boolean
-            flow.addImplication(elvisVariable.eq(!value) implies (lhsVariable.notEq(null)))
+            flow = flow.addImplication(elvisVariable.eq(!value) implies (lhsVariable.notEq(null)))
+            node.flow = flow
         }
     }
 
@@ -1466,7 +1490,7 @@ abstract class FirDataFlowAnalyzer<FLOW : Flow>(
         var flow = logicSystem.joinFlow(previousFlows)
         // deadForwardCount should be added due to cases like merge after 'if (...) return else ...'
         if (updateReceivers || previousFlows.size + deadForwardCount > 1) {
-            logicSystem.updateAllReceivers(flow)
+            flow = logicSystem.updateAllReceivers(flow)
         }
         if (shouldForkFlow) {
             flow = flow.fork()
@@ -1474,24 +1498,30 @@ abstract class FirDataFlowAnalyzer<FLOW : Flow>(
         node.flow = flow
     }
 
-    private fun FLOW.addImplication(statement: Implication) {
-        logicSystem.addImplication(this, statement)
+    private fun FLOW.addImplication(statement: Implication): FLOW {
+        return logicSystem.addImplication(this, statement)
     }
 
-    private fun FLOW.addTypeStatement(info: TypeStatement) {
-        logicSystem.addTypeStatement(this, info)
+    private fun FLOW.addTypeStatement(info: TypeStatement): FLOW {
+        return logicSystem.addTypeStatement(this, info)
     }
 
-    private fun FLOW.addConstraintStatement(info: ConstraintStatement) {
-        logicSystem.addConstraintStatement(this, info)
+    private fun FLOW.addConstraintStatement(info: ConstraintStatement): FLOW {
+        return logicSystem.addConstraintStatement(this, info)
     }
 
-    private fun FLOW.removeAllAboutVariable(variable: RealVariable?) {
-        if (variable == null) return
-        logicSystem.removeTypeStatementsAboutVariable(this, variable)
-        logicSystem.removeConstraintStatementsAboutVariable(this, variable)
-        logicSystem.removeLogicStatementsAboutVariable(this, variable)
-        logicSystem.removeAliasInformationAboutVariable(this, variable)
+    private fun FLOW.removeAllAboutVariable(variable: RealVariable?): FLOW {
+        val newFlow = this.copy()
+        if (variable == null) return newFlow
+        return newFlow
+            .let { logicSystem.removeTypeStatementsAboutVariable(it, variable) }
+            .let { logicSystem.removeConstraintStatementsAboutVariable(it, variable) }
+            .let { logicSystem.removeLogicStatementsAboutVariable(it, variable) }
+            .let { logicSystem.removeAliasInformationAboutVariable(it, variable) }
+//        logicSystem.removeTypeStatementsAboutVariable(this, variable)
+//        logicSystem.removeConstraintStatementsAboutVariable(this, variable)
+//        logicSystem.removeLogicStatementsAboutVariable(this, variable)
+//        logicSystem.removeAliasInformationAboutVariable(this, variable)
     }
 
     private fun FLOW.fork(): FLOW {

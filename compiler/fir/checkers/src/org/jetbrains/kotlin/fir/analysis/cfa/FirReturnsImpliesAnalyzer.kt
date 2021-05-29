@@ -48,10 +48,10 @@ object FirReturnsImpliesAnalyzer : FirControlFlowChecker() {
         if (effects.isNullOrEmpty()) return
 
         val logicSystem = object : PersistentLogicSystem(context.session.typeContext) {
-            override fun processUpdatedReceiverVariable(flow: PersistentFlow, variable: RealVariable) =
+            override fun processUpdatedReceiverVariable(flow: PersistentFlow, variable: RealVariable): PersistentFlow =
                 throw IllegalStateException("Receiver variable update is not possible for this logic system")
 
-            override fun updateAllReceivers(flow: PersistentFlow) =
+            override fun updateAllReceivers(flow: PersistentFlow): PersistentFlow =
                 throw IllegalStateException("Update of all receivers is not possible for this logic system")
 
             override fun ConeKotlinType.isAcceptableForSmartcast(): Boolean {
@@ -75,7 +75,7 @@ object FirReturnsImpliesAnalyzer : FirControlFlowChecker() {
         effectDeclaration: ConeConditionalEffectDeclaration,
         function: FirFunction,
         logicSystem: LogicSystem<PersistentFlow>,
-        dataFlowInfo: DataFlowInfo,
+        dataFlowInfo: DataFlowInfo<*>,
         context: CheckerContext
     ): Boolean {
         val effect = effectDeclaration.effect as ConeReturnsEffectDeclaration
@@ -136,7 +136,9 @@ object FirReturnsImpliesAnalyzer : FirControlFlowChecker() {
         val newTypeStatements: MutableTypeStatements = mutableMapOf()
 
         // TODO: support both type and constraint statements here
-        approveStatementsTo(newTypeStatements, mutableMapOf(), flow, statement, flow.logicStatements.flatMap { it.value })
+        @Suppress("NAME_SHADOWING")
+        var flow = flow
+        flow = approveStatementsTo(newTypeStatements, mutableMapOf(), flow, statement, flow.logicStatements.flatMap { it.value })
         newTypeStatements.mergeTypeStatements(flow.approvedTypeStatements)
 
         val variable = statement.variable
@@ -155,7 +157,7 @@ object FirReturnsImpliesAnalyzer : FirControlFlowChecker() {
         function: FirFunction,
         logicSystem: LogicSystem<*>,
         variableStorage: VariableStorage,
-        flow: Flow,
+        flow: Flow<PersistentFlow>,
         context: CheckerContext
     ): MutableTypeStatements? {
         fun buildTypeStatements(arg: ConeValueParameterReference, exactType: Boolean, type: ConeKotlinType): MutableTypeStatements? {
