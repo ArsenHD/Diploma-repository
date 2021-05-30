@@ -1395,26 +1395,33 @@ abstract class FirDataFlowAnalyzer<FLOW : Flow<FLOW>>(
     fun exitElvisLhs(elvisExpression: FirElvisExpression) {
         val (lhsExitNode, lhsIsNotNullNode, rhsEnterNode) = graphBuilder.exitElvisLhs(elvisExpression)
         lhsExitNode.mergeIncomingFlow()
-        var flow = lhsExitNode.flow
+        val flow = lhsExitNode.flow
         val lhsVariable = variableStorage.getOrCreateVariable(flow, elvisExpression.lhs)
-        flow = logicSystem.approveStatementsInsideFlow(
-            flow,
-            lhsVariable notEq null,
-            shouldForkFlow = true,
-            shouldRemoveSynthetics = false
-        )
-        if (lhsVariable.isReal()) {
-            flow = flow.addTypeStatement(lhsVariable typeEq any)
-        }
         lhsIsNotNullNode.flow = flow
-        flow = logicSystem.approveStatementsInsideFlow(
-            flow,
-            lhsVariable eq null,
-            shouldForkFlow = true,
-            shouldRemoveSynthetics = false
-        )
-        flow = logicSystem.updateAllReceivers(flow)
+            .let {
+                logicSystem.approveStatementsInsideFlow(
+                    it,
+                    lhsVariable notEq null,
+                    shouldForkFlow = true,
+                    shouldRemoveSynthetics = false
+                )
+            }.let {
+                lhsVariable
+                    .takeIfReal()
+                    ?.let { variable -> it.addTypeStatement(variable typeEq any) }
+                    ?: it
+            }
         rhsEnterNode.flow = flow
+            .let {
+                logicSystem.approveStatementsInsideFlow(
+                    it,
+                    lhsVariable eq null,
+                    shouldForkFlow = true,
+                    shouldRemoveSynthetics = false
+                )
+            }.let {
+                logicSystem.updateAllReceivers(it)
+            }
     }
 
     fun exitElvis(elvisExpression: FirElvisExpression) {

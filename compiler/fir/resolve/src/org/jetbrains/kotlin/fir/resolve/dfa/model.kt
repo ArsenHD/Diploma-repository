@@ -383,3 +383,11 @@ fun DataFlowVariable.isReal(): Boolean {
     }
     return this is RealVariable
 }
+
+@OptIn(ExperimentalContracts::class)
+fun DataFlowVariable.takeIfReal(): RealVariable? {
+    contract {
+        returnsNotNull() implies (this@takeIfReal is RealVariable)
+    }
+    return this as? RealVariable
+}
