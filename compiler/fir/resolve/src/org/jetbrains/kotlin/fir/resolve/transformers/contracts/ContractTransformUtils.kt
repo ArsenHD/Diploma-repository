@@ -25,6 +25,7 @@ import org.jetbrains.kotlin.fir.expressions.builder.buildArgumentList
 import org.jetbrains.kotlin.fir.expressions.builder.buildBlock
 import org.jetbrains.kotlin.fir.expressions.builder.buildFunctionCall
 import org.jetbrains.kotlin.fir.expressions.builder.buildLambdaArgumentExpression
+import org.jetbrains.kotlin.fir.moduleData
 import org.jetbrains.kotlin.fir.references.FirResolvedNamedReference
 import org.jetbrains.kotlin.fir.references.builder.buildSimpleNamedReference
 import org.jetbrains.kotlin.fir.resolve.ResolutionMode
@@ -80,7 +81,7 @@ internal fun <T : FirContractDescriptionOwner> wrapEffectsInContractCall(
 ) {
     val rawEffects = contractDescription.rawEffects
     val effectsBlock = buildAnonymousFunction {
-        session = firSession
+        moduleData = firSession.moduleData
         origin = FirDeclarationOrigin.Source
         returnTypeRef = buildImplicitTypeRef()
         receiverTypeRef = buildImplicitTypeRef()

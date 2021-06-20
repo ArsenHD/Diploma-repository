@@ -1170,7 +1170,7 @@ open class RawFirBuilder(
                             isContract = function.hasModifier(CONTRACT_KEYWORD)
                         }
                     }
- }
+                }
             }
 
             val target = FirFunctionTarget(labelName, isLambda = false)
