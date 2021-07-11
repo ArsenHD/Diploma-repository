@@ -1,6 +1,6 @@
 import kotlin.contracts.*
 
-class A
+open class A
 
 class B : A()
 
