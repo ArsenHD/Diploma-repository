@@ -22,7 +22,7 @@ class KtRefinedTypeConstraintElementType(debugName: String, psiClass: Class<KtRe
         return KotlinRefinedTypeConstraintStubImpl(parentStub, this)
     }
 
-    override fun createStub(psi: KtRefinedTypeConstraint, parentStub: StubElement<PsiElement>?): KotlinRefinedTypeConstraintStub {
+    override fun createStub(psi: KtRefinedTypeConstraint, parentStub: StubElement<*>?): KotlinRefinedTypeConstraintStub {
         return KotlinRefinedTypeConstraintStubImpl(parentStub, this)
     }
 }

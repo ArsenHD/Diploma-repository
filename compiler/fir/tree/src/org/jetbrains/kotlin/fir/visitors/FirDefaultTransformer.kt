@@ -110,7 +110,7 @@ abstract class FirDefaultTransformer<D> : FirTransformer<D>() {
         return transformFunctionCall(implicitInvokeCall, data)
     }
 
-    override fun transformRefinedType(refinedType: FirRefinedType, data: D): FirDeclaration {
+    override fun transformRefinedType(refinedType: FirRefinedType, data: D): FirStatement {
         return transformTypeAlias(refinedType, data)
     }
 }
