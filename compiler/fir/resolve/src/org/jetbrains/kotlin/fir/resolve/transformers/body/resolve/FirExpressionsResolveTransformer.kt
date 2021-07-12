@@ -273,10 +273,6 @@ open class FirExpressionsResolveTransformer(transformer: FirBodyResolveTransform
             (calleeReference is FirResolvedNamedReference || calleeReference is FirErrorNamedReference) &&
             functionCall.resultType is FirImplicitTypeRef
         ) {
-            val symbol = functionCall.toResolvedCallableSymbol()
-            if (symbol?.callableId == FirDataFlowAnalyzer.KOTLIN_SATISFIES) {
-                dataFlowAnalyzer.exitFunctionCall(functionCall, true)
-            }
             storeTypeFromCallee(functionCall)
         }
         if (calleeReference !is FirSimpleNamedReference) {
