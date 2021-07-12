@@ -90,6 +90,7 @@ abstract class FirDataFlowAnalyzer<FLOW : Flow>(
 ) {
     companion object {
         internal val KOTLIN_BOOLEAN_NOT = CallableId(FqName("kotlin"), FqName("Boolean"), Name.identifier("not"))
+        internal val KOTLIN_SATISFIES = CallableId(FqName("kotlin.contracts"), FqName("ContractBuilder"), Name.identifier("satisfies"))
 
         fun createFirDataFlowAnalyzer(
             components: FirAbstractBodyResolveTransformer.BodyResolveTransformerComponents,

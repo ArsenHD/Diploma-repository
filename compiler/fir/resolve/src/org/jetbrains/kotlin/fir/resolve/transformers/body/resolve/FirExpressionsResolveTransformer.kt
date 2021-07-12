@@ -22,6 +22,7 @@ import org.jetbrains.kotlin.fir.references.builder.buildSimpleNamedReference
 import org.jetbrains.kotlin.fir.references.impl.FirSimpleNamedReference
 import org.jetbrains.kotlin.fir.resolve.*
 import org.jetbrains.kotlin.fir.resolve.calls.*
+import org.jetbrains.kotlin.fir.resolve.dfa.FirDataFlowAnalyzer
 import org.jetbrains.kotlin.fir.resolve.diagnostics.*
 import org.jetbrains.kotlin.fir.resolve.inference.FirStubInferenceSession
 import org.jetbrains.kotlin.fir.resolve.inference.inferenceComponents
@@ -272,6 +273,10 @@ open class FirExpressionsResolveTransformer(transformer: FirBodyResolveTransform
             (calleeReference is FirResolvedNamedReference || calleeReference is FirErrorNamedReference) &&
             functionCall.resultType is FirImplicitTypeRef
         ) {
+            val symbol = functionCall.toResolvedCallableSymbol()
+            if (symbol?.callableId == FirDataFlowAnalyzer.KOTLIN_SATISFIES) {
+                dataFlowAnalyzer.exitFunctionCall(functionCall, true)
+            }
             storeTypeFromCallee(functionCall)
         }
         if (calleeReference !is FirSimpleNamedReference) {
