@@ -335,6 +335,10 @@ open class FirBodyResolveTransformer(
         return declarationsTransformer.transformTypeAlias(typeAlias, data)
     }
 
+    override fun transformRefinedType(refinedType: FirRefinedType, data: ResolutionMode): FirStatement {
+        return declarationsTransformer.transformRefinedType(refinedType, data)
+    }
+
     // ------------------------------------- Control flow statements -------------------------------------
 
     override fun transformWhileLoop(whileLoop: FirWhileLoop, data: ResolutionMode): FirStatement {

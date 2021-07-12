@@ -385,6 +385,13 @@ open class FirDeclarationsResolveTransformer(transformer: FirBodyResolveTransfor
         return typeAlias
     }
 
+    override fun transformRefinedType(refinedType: FirRefinedType, data: ResolutionMode): FirStatement {
+        dataFlowAnalyzer.enterRefinedType(refinedType)
+        refinedType.transformConstraints(transformer, data)
+        dataFlowAnalyzer.exitRefinedType(refinedType)
+        return refinedType
+    }
+
     private fun doTransformRegularClass(
         regularClass: FirRegularClass,
         data: ResolutionMode
