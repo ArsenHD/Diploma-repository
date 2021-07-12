@@ -27,7 +27,7 @@ class FirContractFunctionResolveTransformerAdapter(session: FirSession, scopeSes
         return element
     }
 
-    override fun transformFile(file: FirFile, data: Nothing?): FirDeclaration {
+    override fun transformFile(file: FirFile, data: Nothing?): FirFile {
         return file.transform(transformer, ResolutionMode.ContextIndependent)
     }
 }

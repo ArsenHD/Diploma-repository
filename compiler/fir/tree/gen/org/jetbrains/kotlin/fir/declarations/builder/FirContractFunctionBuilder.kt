@@ -12,6 +12,7 @@ import org.jetbrains.kotlin.fir.builder.FirAnnotationContainerBuilder
 import org.jetbrains.kotlin.fir.builder.FirBuilderDsl
 import org.jetbrains.kotlin.fir.contracts.FirContractDescription
 import org.jetbrains.kotlin.fir.contracts.impl.FirEmptyContractDescription
+import org.jetbrains.kotlin.fir.declarations.DeprecationsPerUseSite
 import org.jetbrains.kotlin.fir.declarations.FirContractFunction
 import org.jetbrains.kotlin.fir.declarations.FirDeclarationAttributes
 import org.jetbrains.kotlin.fir.declarations.FirDeclarationOrigin
@@ -45,12 +46,13 @@ class FirContractFunctionBuilder : FirFunctionBuilder, FirTypeParametersOwnerBui
     override lateinit var origin: FirDeclarationOrigin
     override var attributes: FirDeclarationAttributes = FirDeclarationAttributes()
     override lateinit var returnTypeRef: FirTypeRef
+    override lateinit var status: FirDeclarationStatus
     var receiverTypeRef: FirTypeRef? = null
+    override var deprecation: DeprecationsPerUseSite? = null
+    override var containerSource: DeserializedContainerSource? = null
+    override var dispatchReceiverType: ConeKotlinType? = null
     override val valueParameters: MutableList<FirValueParameter> = mutableListOf()
     override var body: FirBlock? = null
-    lateinit var status: FirDeclarationStatus
-    var containerSource: DeserializedContainerSource? = null
-    var dispatchReceiverType: ConeKotlinType? = null
     var contractDescription: FirContractDescription = FirEmptyContractDescription
     lateinit var name: Name
     lateinit var symbol: FirNamedFunctionSymbol
@@ -65,12 +67,13 @@ class FirContractFunctionBuilder : FirFunctionBuilder, FirTypeParametersOwnerBui
             origin,
             attributes,
             returnTypeRef,
-            receiverTypeRef,
-            valueParameters,
-            body,
             status,
+            receiverTypeRef,
+            deprecation,
             containerSource,
             dispatchReceiverType,
+            valueParameters,
+            body,
             contractDescription,
             name,
             symbol,

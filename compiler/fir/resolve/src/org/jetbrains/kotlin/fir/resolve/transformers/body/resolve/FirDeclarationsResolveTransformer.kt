@@ -464,7 +464,7 @@ open class FirDeclarationsResolveTransformer(transformer: FirBodyResolveTransfor
     override fun transformContractFunction(
         contractFunction: FirContractFunction,
         data: ResolutionMode
-    ): FirDeclaration {
+    ): FirStatement {
         return contractFunction
     }
 

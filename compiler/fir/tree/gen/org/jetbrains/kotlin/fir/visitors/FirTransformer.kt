@@ -632,7 +632,7 @@ abstract class FirTransformer<in D> : FirVisitor<FirElement, D>() {
         return transformElement(implicitTypeRef, data)
     }
 
-    open fun transformContractFunction(contractFunction: FirContractFunction, data: D): FirDeclaration {
+    open fun transformContractFunction(contractFunction: FirContractFunction, data: D): FirStatement {
         return transformElement(contractFunction, data)
     }
 
@@ -1148,7 +1148,7 @@ abstract class FirTransformer<in D> : FirVisitor<FirElement, D>() {
         return transformImplicitTypeRef(implicitTypeRef, data)
     }
 
-    final override fun visitContractFunction(contractFunction: FirContractFunction, data: D): FirDeclaration {
+    final override fun visitContractFunction(contractFunction: FirContractFunction, data: D): FirStatement {
         return transformContractFunction(contractFunction, data)
     }
 

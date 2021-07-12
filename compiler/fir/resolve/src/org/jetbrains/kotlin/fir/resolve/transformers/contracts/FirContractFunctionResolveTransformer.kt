@@ -43,7 +43,7 @@ class FirContractFunctionResolveTransformer(
         override fun transformContractFunction(
             contractFunction: FirContractFunction,
             data: ResolutionMode
-        ): FirDeclaration {
+        ): FirStatement {
             val symbol = contractFunction.symbol
             val status = contractFunctionResolveSession.getStatus(symbol)
             if (status is ContractFunctionResolveComputationStatus.Computed) {
@@ -95,7 +95,7 @@ class FirContractFunctionResolveTransformer(
             }
 
             val argument = contractCall.argument as? FirLambdaArgumentExpression ?: return transformErrorContractFunction(contractFunction)
-            val lambdaBody = (argument.expression as FirAnonymousFunction).body ?: return transformErrorContractFunction(contractFunction)
+            val lambdaBody = (argument.expression as FirAnonymousFunctionExpression).anonymousFunction.body ?: return transformErrorContractFunction(contractFunction)
 
             val resolvedContractDescription = obtainResolvedContractDescription(
                 session,
@@ -151,14 +151,14 @@ class FirContractFunctionResolveTransformer(
             return transformElement(simpleFunction, data)
         }
 
-        override fun transformConstructor(constructor: FirConstructor, data: ResolutionMode): FirDeclaration {
+        override fun transformConstructor(constructor: FirConstructor, data: ResolutionMode): FirConstructor {
             return transformElement(constructor, data)
         }
 
         override fun transformAnonymousInitializer(
             anonymousInitializer: FirAnonymousInitializer,
             data: ResolutionMode
-        ): FirDeclaration {
+        ): FirAnonymousInitializer {
             return transformElement(anonymousInitializer, data)
         }
 

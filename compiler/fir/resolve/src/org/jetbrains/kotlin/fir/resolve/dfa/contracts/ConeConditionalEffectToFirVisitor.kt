@@ -117,7 +117,7 @@ fun createArgumentsMapping(qualifiedAccess: FirQualifiedAccess): Map<Int, FirExp
 }
 
 private fun getArgumentsToParametersMapping(
-    function: FirFunction<*>,
+    function: FirFunction,
     functionCall: FirFunctionCall,
     argumentsMapping: MutableMap<Int, FirExpression>
 ): Map<Int, FirExpression>? {

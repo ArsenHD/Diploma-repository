@@ -21,17 +21,14 @@ import org.jetbrains.kotlin.fir.expressions.FirBlock
 import org.jetbrains.kotlin.fir.expressions.FirExpression
 import org.jetbrains.kotlin.fir.expressions.FirFunctionCall
 import org.jetbrains.kotlin.fir.expressions.FirStatement
-import org.jetbrains.kotlin.fir.expressions.builder.buildArgumentList
-import org.jetbrains.kotlin.fir.expressions.builder.buildBlock
-import org.jetbrains.kotlin.fir.expressions.builder.buildFunctionCall
-import org.jetbrains.kotlin.fir.expressions.builder.buildLambdaArgumentExpression
+import org.jetbrains.kotlin.fir.expressions.builder.*
 import org.jetbrains.kotlin.fir.moduleData
 import org.jetbrains.kotlin.fir.references.FirResolvedNamedReference
 import org.jetbrains.kotlin.fir.references.builder.buildSimpleNamedReference
 import org.jetbrains.kotlin.fir.resolve.ResolutionMode
 import org.jetbrains.kotlin.fir.resolve.dfa.contracts.createArgumentsMapping
 import org.jetbrains.kotlin.fir.resolve.transformers.body.resolve.FirBodyResolveTransformer
-import org.jetbrains.kotlin.fir.symbols.AbstractFirBasedSymbol
+import org.jetbrains.kotlin.fir.symbols.FirBasedSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirAnonymousFunctionSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirContractFunctionSymbol
 import org.jetbrains.kotlin.fir.types.builder.buildImplicitTypeRef
@@ -80,16 +77,18 @@ internal fun <T : FirContractDescriptionOwner> wrapEffectsInContractCall(
     contractDescription: FirRawContractDescription
 ) {
     val rawEffects = contractDescription.rawEffects
-    val effectsBlock = buildAnonymousFunction {
-        moduleData = firSession.moduleData
-        origin = FirDeclarationOrigin.Source
-        returnTypeRef = buildImplicitTypeRef()
-        receiverTypeRef = buildImplicitTypeRef()
-        symbol = FirAnonymousFunctionSymbol()
-        isLambda = true
+    val effectsBlock = buildAnonymousFunctionExpression {
+        anonymousFunction = buildAnonymousFunction {
+            moduleData = firSession.moduleData
+            origin = FirDeclarationOrigin.Source
+            returnTypeRef = buildImplicitTypeRef()
+            receiverTypeRef = buildImplicitTypeRef()
+            symbol = FirAnonymousFunctionSymbol()
+            isLambda = true
 
-        body = buildBlock {
-            statements += rawEffects
+            body = buildBlock {
+                statements += rawEffects
+            }
         }
     }
 
@@ -113,7 +112,7 @@ internal fun <T : FirContractDescriptionOwner> wrapEffectsInContractCall(
     owner.replaceContractDescription(legacyRawContractDescription)
 }
 
-internal fun getResolvedSymbolIfFunctionCall(statement: FirStatement): AbstractFirBasedSymbol<*>? {
+internal fun getResolvedSymbolIfFunctionCall(statement: FirStatement): FirBasedSymbol<*>? {
     val functionCall = statement as? FirFunctionCall
     val resolvedReference = functionCall?.calleeReference as? FirResolvedNamedReference
     return resolvedReference?.resolvedSymbol
