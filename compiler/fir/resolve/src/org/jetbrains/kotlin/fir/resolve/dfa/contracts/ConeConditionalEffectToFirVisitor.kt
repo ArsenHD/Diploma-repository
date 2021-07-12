@@ -82,6 +82,11 @@ private class ConeConditionalEffectToFirVisitor(
         }
     }
 
+    override fun visitSatisfiesPredicate(
+        satisfiesEffect: ConeSatisfiesPredicate,
+        data: Nothing?
+    ): FirExpression? = null
+
     override fun visitValueParameterReference(valueParameterReference: ConeValueParameterReference, data: Nothing?): FirExpression? {
         return valueParametersMapping[valueParameterReference.parameterIndex]
     }
@@ -104,6 +109,7 @@ fun createArgumentsMapping(qualifiedAccess: FirQualifiedAccess): Map<Int, FirExp
         is FirFunctionCall -> {
             val function = qualifiedAccess.toResolvedCallableSymbol()?.fir
             return when (function) {
+                // order is important here, because FirContractFunction inherits from FirSimpleFunction
                 is FirContractFunction -> getArgumentsToParametersMapping(function, qualifiedAccess, argumentsMapping)
                 is FirSimpleFunction -> getArgumentsToParametersMapping(function, qualifiedAccess, argumentsMapping)
                 else -> null
