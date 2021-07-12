@@ -5,22 +5,31 @@
 
 package org.jetbrains.kotlin.fir.resolve.dfa.contracts
 
+import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.contracts.description.*
 import org.jetbrains.kotlin.fir.declarations.FirContractFunction
 import org.jetbrains.kotlin.fir.declarations.FirFunction
 import org.jetbrains.kotlin.fir.declarations.FirSimpleFunction
+import org.jetbrains.kotlin.fir.diagnostics.ConeSimpleDiagnostic
 import org.jetbrains.kotlin.fir.expressions.*
 import org.jetbrains.kotlin.fir.expressions.builder.*
 import org.jetbrains.kotlin.fir.expressions.impl.FirNoReceiverExpression
+import org.jetbrains.kotlin.fir.references.builder.buildErrorNamedReference
+import org.jetbrains.kotlin.fir.references.builder.buildResolvedNamedReference
 import org.jetbrains.kotlin.fir.references.builder.buildSimpleNamedReference
 import org.jetbrains.kotlin.fir.resolve.substitution.ConeSubstitutor
+import org.jetbrains.kotlin.fir.resolve.providers.getClassDeclaredFunctionSymbols
+import org.jetbrains.kotlin.fir.resolve.symbolProvider
 import org.jetbrains.kotlin.fir.types.builder.buildResolvedTypeRef
+import org.jetbrains.kotlin.name.ClassId
+import org.jetbrains.kotlin.name.Name
 import org.jetbrains.kotlin.types.ConstantValueKind
 import org.jetbrains.kotlin.util.OperatorNameConventions
 
 private class ConeConditionalEffectToFirVisitor(
     val valueParametersMapping: Map<Int, FirExpression>,
-    val substitutor: ConeSubstitutor
+    val substitutor: ConeSubstitutor,
+    val session: FirSession
 ) : ConeContractDescriptionVisitor<FirExpression?, Nothing?>() {
     override fun visitConditionalEffectDeclaration(conditionalEffect: ConeConditionalEffectDeclaration, data: Nothing?): FirExpression? {
         return conditionalEffect.condition.accept(this, data)
@@ -85,7 +94,42 @@ private class ConeConditionalEffectToFirVisitor(
     override fun visitSatisfiesPredicate(
         satisfiesEffect: ConeSatisfiesPredicate,
         data: Nothing?
-    ): FirExpression? = null
+    ): FirExpression? {
+        val argument = satisfiesEffect.value.accept(this, data) ?: return null
+
+        return buildFunctionCall {
+            val functionName = Name.identifier("satisfies")
+            val session = session
+            val classId = ClassId.fromString("kotlin.contracts/ContractBuilder")
+            calleeReference = session.symbolProvider.getClassDeclaredFunctionSymbols(classId, functionName)
+                .firstOrNull()?.let { functionSymbol ->
+                    buildResolvedNamedReference {
+                        name = functionName
+                        resolvedSymbol = functionSymbol
+                    }
+                } ?: buildErrorNamedReference {
+                    diagnostic = ConeSimpleDiagnostic("Could not find function 'satisfies' in interface kotlin.contracts/ContractBuilder")
+                }
+            explicitReceiver = argument
+            argumentList = buildArgumentList {
+                val references = satisfiesEffect.predicateReferences
+                if (references.size == 1) {
+                    arguments += references.single()
+                } else {
+                    arguments += buildFunctionCall {
+                        calleeReference = buildSimpleNamedReference {
+                            name = Name.identifier("arrayOf")
+                        }
+                        argumentList = buildArgumentList {
+                            arguments += buildVarargArgumentsExpression {
+                                arguments += references
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
 
     override fun visitValueParameterReference(valueParameterReference: ConeValueParameterReference, data: Nothing?): FirExpression? {
         return valueParametersMapping[valueParameterReference.parameterIndex]
@@ -96,9 +140,10 @@ private class ConeConditionalEffectToFirVisitor(
 
 fun ConeConditionalEffectDeclaration.buildContractFir(
     argumentMapping: Map<Int, FirExpression>,
-    substitutor: ConeSubstitutor
+    substitutor: ConeSubstitutor,
+    session: FirSession
 ): FirExpression? {
-    return condition.accept(ConeConditionalEffectToFirVisitor(argumentMapping, substitutor), null)
+    return condition.accept(ConeConditionalEffectToFirVisitor(argumentMapping, substitutor, session), null)
 }
 
 fun createArgumentsMapping(qualifiedAccess: FirQualifiedAccess): Map<Int, FirExpression>? {
