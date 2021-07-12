@@ -5,6 +5,7 @@
 
 package org.jetbrains.kotlin.fir.visitors
 
+import org.jetbrains.kotlin.fir.declarations.FirContractFunction
 import org.jetbrains.kotlin.fir.declarations.FirErrorFunction
 import org.jetbrains.kotlin.fir.expressions.*
 import org.jetbrains.kotlin.fir.references.FirErrorNamedReference
@@ -49,6 +50,10 @@ abstract class FirDefaultTransformer<D> : FirTransformer<D>() {
 
     override fun transformComponentCall(componentCall: FirComponentCall, data: D): FirStatement {
         return transformFunctionCall(componentCall, data)
+    }
+
+    override fun transformContractFunction(contractFunction: FirContractFunction, data: D): FirStatement {
+        return transformSimpleFunction(contractFunction, data)
     }
 
     override fun transformReturnExpression(returnExpression: FirReturnExpression, data: D): FirStatement {

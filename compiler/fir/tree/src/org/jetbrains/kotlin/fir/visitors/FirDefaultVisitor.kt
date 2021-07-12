@@ -5,6 +5,7 @@
 
 package org.jetbrains.kotlin.fir.visitors
 
+import org.jetbrains.kotlin.fir.declarations.FirContractFunction
 import org.jetbrains.kotlin.fir.declarations.FirErrorFunction
 import org.jetbrains.kotlin.fir.expressions.*
 import org.jetbrains.kotlin.fir.references.FirErrorNamedReference
@@ -94,6 +95,10 @@ abstract class FirDefaultVisitor<R, D> : FirVisitor<R, D>() {
 
     override fun visitImplicitInvokeCall(implicitInvokeCall: FirImplicitInvokeCall, data: D): R {
         return visitFunctionCall(implicitInvokeCall, data)
+    }
+
+    override fun visitContractFunction(contractFunction: FirContractFunction, data: D): R {
+        return visitSimpleFunction(contractFunction, data)
     }
 }
 
