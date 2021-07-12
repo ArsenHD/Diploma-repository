@@ -8,10 +8,7 @@ package org.jetbrains.kotlin.fir.resolve.dfa
 import org.jetbrains.kotlin.config.LanguageFeature
 import org.jetbrains.kotlin.fir.*
 import org.jetbrains.kotlin.fir.contracts.FirResolvedContractDescription
-import org.jetbrains.kotlin.fir.contracts.description.ConeBooleanConstantReference
-import org.jetbrains.kotlin.fir.contracts.description.ConeConditionalEffectDeclaration
-import org.jetbrains.kotlin.fir.contracts.description.ConeConstantReference
-import org.jetbrains.kotlin.fir.contracts.description.ConeReturnsEffectDeclaration
+import org.jetbrains.kotlin.fir.contracts.description.*
 import org.jetbrains.kotlin.fir.declarations.*
 import org.jetbrains.kotlin.fir.declarations.impl.FirDefaultPropertyAccessor
 import org.jetbrains.kotlin.fir.declarations.utils.isLocal
@@ -31,6 +28,8 @@ import org.jetbrains.kotlin.fir.resolve.toSymbol
 import org.jetbrains.kotlin.fir.resolve.transformers.body.resolve.FirAbstractBodyResolveTransformer
 import org.jetbrains.kotlin.fir.resolve.transformers.body.resolve.resultType
 import org.jetbrains.kotlin.fir.symbols.FirBasedSymbol
+import org.jetbrains.kotlin.fir.symbols.impl.FirFunctionSymbol
+import org.jetbrains.kotlin.fir.symbols.impl.FirNamedFunctionSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirTypeParameterSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirVariableSymbol
 import org.jetbrains.kotlin.fir.types.*
@@ -949,6 +948,20 @@ abstract class FirDataFlowAnalyzer<FLOW : Flow>(
         processConditionalContract(functionCall)
     }
 
+    private fun processSatisfiesPredicates(flow: FLOW, condition: FirExpression, operand: FirExpression, constraints: List<FirNamedFunctionSymbol>): DataFlowVariable {
+        val expressionVariable = variableStorage.createSyntheticVariable(condition)
+        val operandVariable = variableStorage.getOrCreateVariable(flow, operand)
+
+        if (operandVariable !is RealVariable) {
+            error("Operand in satisfies expression must be stable: $operand")
+        }
+
+        flow.addImplication((expressionVariable eq true) implies (operandVariable satisfies  constraints))
+        flow.addImplication((expressionVariable eq false) implies (operandVariable doesNotSatisfy constraints))
+
+        return expressionVariable
+    }
+
     fun exitDelegatedConstructorCall(call: FirDelegatedConstructorCall, callCompleted: Boolean) {
         val (callNode, unionNode) = graphBuilder.exitDelegatedConstructorCall(call, callCompleted)
         unionNode?.let { unionFlowFromArguments(it) }
@@ -1005,8 +1018,15 @@ abstract class FirDataFlowAnalyzer<FLOW : Flow>(
         for (conditionalEffect in conditionalEffects) {
             val fir = conditionalEffect.buildContractFir(argumentsMapping, substitutor, components.session) ?: continue
             val effect = conditionalEffect.effect as? ConeReturnsEffectDeclaration ?: continue
-            fir.transformSingle(components.transformer, ResolutionMode.ContextDependent)
-            val argumentVariable = variableStorage.getOrCreateVariable(lastFlow, fir)
+            val condition = conditionalEffect.condition
+            val argumentVariable = if (condition is ConeSatisfiesPredicate) {
+                val index = condition.value.parameterIndex
+                val operand = argumentsMapping[index] ?: continue // TODO: is continue ok here?
+                processSatisfiesPredicates(lastFlow, condition.satisfiesCall, operand, condition.predicates)
+            } else {
+                fir.transformSingle(components.transformer, ResolutionMode.ContextDependent)
+                variableStorage.getOrCreateVariable(lastFlow, fir)
+            }
             val lastNode = graphBuilder.lastNode
             when (val value = effect.value) {
                 ConeConstantReference.WILDCARD -> {
@@ -1072,6 +1092,11 @@ abstract class FirDataFlowAnalyzer<FLOW : Flow>(
         processConditionalContract(assignment)
     }
 
+    private val FirRefinedType.constraintSymbols: List<FirFunctionSymbol<*>>?
+        get() = constraints.map {
+            it.toResolvedCallableSymbol() as? FirFunctionSymbol<*> ?: return null
+        }
+
     private fun exitVariableInitialization(
         node: CFGNode<*>,
         initializer: FirExpression,
@@ -1092,24 +1117,24 @@ abstract class FirDataFlowAnalyzer<FLOW : Flow>(
             logicSystem.recordNewAssignment(flow, propertyVariable, context.newAssignmentIndex())
         }
 
-        variableStorage.getOrCreateRealVariable(flow, initializer.symbol, initializer)
-            ?.let { initializerVariable ->
-                val isInitializerStable = initializerVariable.stability == PropertyStability.STABLE_VALUE ||
-                        (initializerVariable.stability == PropertyStability.LOCAL_VAR &&
-                                initializer is FirQualifiedAccessExpression &&
-                                !isAccessToUnstableLocalVariable(initializer))
+        variableStorage.getOrCreateRealVariable(flow, initializer.symbol, initializer)?.let { initializerVariable ->
+            val isInitializerStable = initializerVariable.stability == PropertyStability.STABLE_VALUE ||
+                    (initializerVariable.stability == PropertyStability.LOCAL_VAR &&
+                            initializer is FirQualifiedAccessExpression &&
+                            !isAccessToUnstableLocalVariable(initializer))
 
-                if (isInitializerStable && (propertyVariable.stability == PropertyStability.STABLE_VALUE || propertyVariable.stability == PropertyStability.LOCAL_VAR)
-                ) {
-                    logicSystem.addLocalVariableAlias(
-                        flow, propertyVariable,
-                        RealVariableAndType(initializerVariable, initializer.coneType)
-                    )
-                    // node.flow.addImplication((propertyVariable notEq null) implies (initializerVariable notEq null))
-                } else {
-                    logicSystem.replaceVariableFromConditionInStatements(flow, initializerVariable, propertyVariable)
-                }
+            if (isInitializerStable && (propertyVariable.stability == PropertyStability.STABLE_VALUE || propertyVariable.stability == PropertyStability.LOCAL_VAR)) {
+                val type = initializer.coneType.toSymbol(components.session)?.fir as? FirRefinedType
+                val constraints = type?.constraintSymbols?.toSet() ?: emptySet()
+                logicSystem.addLocalVariableAlias(
+                    flow, propertyVariable,
+                    RealVariableAndInfo(initializerVariable, initializer.coneType, constraints)
+                )
+                // node.flow.addImplication((propertyVariable notEq null) implies (initializerVariable notEq null))
+            } else {
+                logicSystem.replaceVariableFromConditionInStatements(flow, initializerVariable, propertyVariable)
             }
+        }
 
         variableStorage.getSyntheticVariable(initializer)?.let { initializerVariable ->
             /*
@@ -1215,33 +1240,57 @@ abstract class FirDataFlowAnalyzer<FLOW : Flow>(
                 shouldRemoveSynthetics = true
             )
         } else {
-            val (conditionalFromLeft, conditionalFromRight, approvedFromRight) = logicSystem.collectInfoForBooleanOperator(
-                flowFromLeft,
-                leftVariable,
-                flowFromRight,
-                rightVariable
-            )
+            val (conditionalFromLeft, conditionalFromRight, typeApprovedFromRight, constraintApprovedFromRight) =
+                logicSystem.collectInfoForBooleanOperator(
+                    flowFromLeft,
+                    leftVariable,
+                    flowFromRight,
+                    rightVariable
+                )
 
             // left && right == True
             // left || right == False
-            val approvedIfTrue: MutableTypeStatements = mutableMapOf()
-            logicSystem.approveStatementsTo(approvedIfTrue, flowFromRight, leftVariable eq bothEvaluated, conditionalFromLeft)
-            logicSystem.approveStatementsTo(approvedIfTrue, flowFromRight, rightVariable eq bothEvaluated, conditionalFromRight)
-            approvedFromRight.forEach { (variable, info) ->
-                approvedIfTrue.addStatement(variable, info)
+            val typeApprovedIfTrue: MutableTypeStatements = mutableMapOf()
+            val constraintApprovedIfTrue: MutableConstraintStatements = mutableMapOf()
+            logicSystem.approveStatementsTo(
+                typeApprovedIfTrue,
+                constraintApprovedIfTrue,
+                flowFromRight,
+                leftVariable eq bothEvaluated,
+                conditionalFromLeft
+            )
+            logicSystem.approveStatementsTo(
+                typeApprovedIfTrue,
+                constraintApprovedIfTrue,
+                flowFromRight,
+                rightVariable eq bothEvaluated,
+                conditionalFromRight
+            )
+
+            typeApprovedFromRight.forEach { (variable, info) ->
+                typeApprovedIfTrue.addStatement(variable, info)
             }
-            approvedIfTrue.values.forEach { info ->
+            constraintApprovedFromRight.forEach { (variable, info) ->
+                constraintApprovedIfTrue.addStatement(variable, info)
+            }
+
+            val approvedIfTrue = typeApprovedIfTrue.values + constraintApprovedIfTrue.values
+            approvedIfTrue.forEach { info ->
                 flow.addImplication((operatorVariable eq bothEvaluated) implies info)
             }
 
             // left && right == False
             // left || right == True
-            val approvedIfFalse: MutableTypeStatements = mutableMapOf()
-            val leftIsFalse = logicSystem.approveOperationStatement(flowFromLeft, leftVariable eq onlyLeftEvaluated, conditionalFromLeft)
-            val rightIsFalse =
+            val typeApprovedIfFalse: MutableTypeStatements = mutableMapOf()
+            val constraintApprovedIfFalse: MutableConstraintStatements = mutableMapOf()
+            val (typeIfLeftIsFalse, constraintIfLeftIsFalse) =
+                logicSystem.approveOperationStatement(flowFromLeft, leftVariable eq onlyLeftEvaluated, conditionalFromLeft)
+            val (typeIfRightIsFalse, constraintIfRightIsFalse) =
                 logicSystem.approveOperationStatement(flowFromRight, rightVariable eq onlyLeftEvaluated, conditionalFromRight)
-            approvedIfFalse.mergeTypeStatements(logicSystem.orForTypeStatements(leftIsFalse, rightIsFalse))
-            approvedIfFalse.values.forEach { info ->
+            typeApprovedIfFalse.mergeTypeStatements(logicSystem.orForTypeStatements(typeIfLeftIsFalse, typeIfRightIsFalse))
+            constraintApprovedIfFalse.mergeConstraintStatements(logicSystem.orForConstraintStatements(constraintIfLeftIsFalse, constraintIfRightIsFalse))
+            val approvedIfFalse = typeApprovedIfFalse.values + constraintApprovedIfFalse.values
+            approvedIfFalse.forEach { info ->
                 flow.addImplication((operatorVariable eq onlyLeftEvaluated) implies info)
             }
         }
@@ -1433,9 +1482,14 @@ abstract class FirDataFlowAnalyzer<FLOW : Flow>(
         logicSystem.addTypeStatement(this, info)
     }
 
+    private fun FLOW.addConstraintStatement(info: ConstraintStatement) {
+        logicSystem.addConstraintStatement(this, info)
+    }
+
     private fun FLOW.removeAllAboutVariable(variable: RealVariable?) {
         if (variable == null) return
         logicSystem.removeTypeStatementsAboutVariable(this, variable)
+        logicSystem.removeConstraintStatementsAboutVariable(this, variable)
         logicSystem.removeLogicStatementsAboutVariable(this, variable)
         logicSystem.removeAliasInformationAboutVariable(this, variable)
     }

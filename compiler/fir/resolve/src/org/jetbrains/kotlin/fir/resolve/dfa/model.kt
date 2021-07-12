@@ -360,6 +360,12 @@ infix fun RealVariable.typeNotEq(type: ConeKotlinType): TypeStatement =
         MutableTypeStatement(this)
     }
 
+infix fun RealVariable.satisfies(constraints: List<FirFunctionSymbol<*>>): ConstraintStatement =
+    PersistentConstraintStatement(this, constraints.toPersistentSet(), persistentSetOf())
+
+infix fun RealVariable.doesNotSatisfy(constraints: List<FirFunctionSymbol<*>>): ConstraintStatement =
+    PersistentConstraintStatement(this, persistentSetOf(), constraints.toPersistentSet())
+
 // --------------------------------------- Utils ---------------------------------------
 
 @OptIn(ExperimentalContracts::class)

@@ -80,12 +80,12 @@ class ConeEffectExtractor(
                             if (reference.resolvedSymbol !is FirNamedFunctionSymbol) return null
                             referenceAccess
                         }
-                        ConeSatisfiesPredicate(variable, predicateReferences)
+                        ConeSatisfiesPredicate(variable, predicateReferences, functionCall)
                     }
                     is FirCallableReferenceAccess -> {
                         val reference = right.calleeReference as? FirResolvedCallableReference ?: return null
                         if (reference.resolvedSymbol !is FirNamedFunctionSymbol) return null
-                        ConeSatisfiesPredicate(variable, right)
+                        ConeSatisfiesPredicate(variable, right, functionCall)
                     }
                     else -> null
                 }

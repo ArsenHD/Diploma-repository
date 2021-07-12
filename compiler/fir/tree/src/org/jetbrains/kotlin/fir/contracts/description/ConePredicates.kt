@@ -6,7 +6,8 @@
 package org.jetbrains.kotlin.fir.contracts.description
 
 import org.jetbrains.kotlin.fir.expressions.FirCallableReferenceAccess
-import org.jetbrains.kotlin.fir.references.FirResolvedCallableReference
+import org.jetbrains.kotlin.fir.expressions.FirFunctionCall
+import org.jetbrains.kotlin.fir.expressions.toResolvedCallableSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirNamedFunctionSymbol
 import org.jetbrains.kotlin.fir.types.ConeKotlinType
 
@@ -28,19 +29,20 @@ class ConeIsNullPredicate(val arg: ConeValueParameterReference, val isNegated: B
 
 class ConeSatisfiesPredicate(
     val value: ConeValueParameterReference,
-    val predicateReferences: List<FirCallableReferenceAccess>
+    val predicateReferences: List<FirCallableReferenceAccess>,
+    val satisfiesCall: FirFunctionCall
 ) : ConeBooleanExpression {
 
     constructor(
         value: ConeValueParameterReference,
-        predicate: FirCallableReferenceAccess
-    ) : this(value, listOf(predicate))
+        predicate: FirCallableReferenceAccess,
+        satisfiesCall: FirFunctionCall
+    ) : this(value, listOf(predicate), satisfiesCall)
 
     override fun <R, D> accept(contractDescriptionVisitor: ConeContractDescriptionVisitor<R, D>, data: D): R =
         contractDescriptionVisitor.visitSatisfiesPredicate(this, data)
 
     val predicates: List<FirNamedFunctionSymbol>
         get() = predicateReferences
-            .mapNotNull { it.calleeReference as? FirResolvedCallableReference }
-            .mapNotNull { it.resolvedSymbol as? FirNamedFunctionSymbol }
+            .mapNotNull { it.toResolvedCallableSymbol() as? FirNamedFunctionSymbol }
 }
