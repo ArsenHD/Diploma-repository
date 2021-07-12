@@ -509,6 +509,7 @@ object FirErrors {
     val UNREACHABLE_CODE by warning2<KtElement, Set<FirSourceElement>, Set<FirSourceElement>>(SourceElementPositioningStrategies.UNREACHABLE_CODE)
     val SENSELESS_COMPARISON by warning2<KtExpression, FirExpression, Boolean>()
     val SENSELESS_NULL_IN_WHEN by warning0<KtElement>()
+    val UNSATISFIED_REFINED_TYPE_CONSTRAINTS by warning0<PsiElement>()
 
     // Nullability
     val UNSAFE_CALL by error2<PsiElement, ConeKotlinType, FirExpression?>(SourceElementPositioningStrategies.DOT_BY_QUALIFIED)

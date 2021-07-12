@@ -2955,6 +2955,13 @@ internal class SenselessNullInWhenImpl(
     override val firDiagnostic: FirPsiDiagnostic by weakRef(firDiagnostic)
 }
 
+internal class UnsatisfiedRefinedTypeConstraintsImpl(
+    firDiagnostic: FirPsiDiagnostic,
+    override val token: ValidityToken,
+) : KtFirDiagnostic.UnsatisfiedRefinedTypeConstraints(), KtAbstractFirDiagnostic<PsiElement> {
+    override val firDiagnostic: FirPsiDiagnostic by weakRef(firDiagnostic)
+}
+
 internal class UnsafeCallImpl(
     override val receiverType: KtType,
     override val receiverExpression: KtExpression?,

@@ -5,10 +5,7 @@
 
 package org.jetbrains.kotlin.fir.analysis.checkers
 
-import org.jetbrains.kotlin.fir.analysis.cfa.AbstractFirPropertyInitializationChecker
-import org.jetbrains.kotlin.fir.analysis.cfa.FirCallsEffectAnalyzer
-import org.jetbrains.kotlin.fir.analysis.cfa.FirPropertyInitializationAnalyzer
-import org.jetbrains.kotlin.fir.analysis.cfa.FirReturnsImpliesAnalyzer
+import org.jetbrains.kotlin.fir.analysis.cfa.*
 import org.jetbrains.kotlin.fir.analysis.checkers.cfa.FirControlFlowChecker
 import org.jetbrains.kotlin.fir.analysis.checkers.declaration.*
 import org.jetbrains.kotlin.fir.analysis.checkers.expression.FirAnonymousFunctionParametersChecker
@@ -112,6 +109,7 @@ object CommonDeclarationCheckers : DeclarationCheckers() {
         get() = setOf(
             FirCallsEffectAnalyzer,
             FirReturnsImpliesAnalyzer,
+            FirRefinedTypeConstraintsChecker
         )
 
     override val variableAssignmentCfaBasedCheckers: Set<AbstractFirPropertyInitializationChecker>

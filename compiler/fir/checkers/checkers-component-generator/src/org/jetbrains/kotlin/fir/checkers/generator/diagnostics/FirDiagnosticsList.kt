@@ -953,6 +953,7 @@ object DIAGNOSTICS_LIST : DiagnosticList("FirErrors") {
             parameter<Boolean>("compareResult")
         }
         val SENSELESS_NULL_IN_WHEN by warning<KtElement>()
+        val UNSATISFIED_REFINED_TYPE_CONSTRAINTS by warning<PsiElement>()
     }
 
     val NULLABILITY by object : DiagnosticGroup("Nullability") {
@@ -1179,11 +1180,11 @@ object DIAGNOSTICS_LIST : DiagnosticList("FirErrors") {
         }
 
         val DECLARATION_CANT_BE_INLINED by error<KtDeclaration>(PositioningStrategy.DECLARATION_SIGNATURE)
-        
+
         val OVERRIDE_BY_INLINE by warning<KtDeclaration>(PositioningStrategy.DECLARATION_SIGNATURE)
-        
+
         val NON_INTERNAL_PUBLISHED_API by error<KtElement>()
-        
+
         val INVALID_DEFAULT_FUNCTIONAL_PARAMETER_FOR_INLINE by error<KtElement>() {
             parameter<FirExpression>("defaultValue")
             parameter<FirValueParameterSymbol>("parameter")
