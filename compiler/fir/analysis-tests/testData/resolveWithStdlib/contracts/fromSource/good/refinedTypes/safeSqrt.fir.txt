@@ -1,0 +1,27 @@
+FILE: safeSqrt.kt
+    public final typealias PositiveDouble = R|kotlin/Double| satisfies ::R|/isPositive|
+    public final fun isPositive(a: R|kotlin/Double|): R|kotlin/Boolean| {
+        ^isPositive CMP(>, R|<local>/a|.R|kotlin/Double.compareTo|(Int(0)))
+    }
+    public final fun checkPositive(num: R|kotlin/Double|): R|kotlin/Boolean|
+        [R|Contract description]
+         <
+            Returns(TRUE) -> num satisfies [::isPositive]
+        >
+     {
+        ^checkPositive R|/isPositive|(R|<local>/num|)
+    }
+    public final fun foo(num: R|kotlin/Double|): R|kotlin/Unit| {
+        when () {
+            R|/checkPositive|(R|<local>/num|) ->  {
+                R|/safeSqrt|(R|<local>/num|)
+            }
+        }
+
+    }
+    public final fun bar(num: R|kotlin/Double|): R|kotlin/Unit| {
+        R|/safeSqrt|(R|<local>/num|)
+    }
+    public final fun safeSqrt(num: R|PositiveDouble|): R|PositiveDouble| {
+        ^safeSqrt R|kotlin/math/sqrt|(R|<local>/num|)
+    }

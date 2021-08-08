@@ -1,0 +1,47 @@
+FILE: smartConstructorWithVars.kt
+    public final typealias PositiveInt = R|kotlin/Int| satisfies ::R|/isPositive|
+    public final fun isPositive(num: R|kotlin/Int|): R|kotlin/Boolean| {
+        ^isPositive CMP(>, R|<local>/num|.R|kotlin/Int.compareTo|(Int(0)))
+    }
+    public final data class PositiveMutablePair : R|kotlin/Any| {
+        public constructor(first: R|PositiveInt|, second: R|PositiveInt|): R|PositiveMutablePair| {
+            super<R|kotlin/Any|>()
+        }
+
+        public final var first: R|PositiveInt| = R|<local>/first|
+            public get(): R|PositiveInt|
+            public set(value: R|PositiveInt|): R|kotlin/Unit|
+
+        public final var second: R|PositiveInt| = R|<local>/second|
+            public get(): R|PositiveInt|
+            public set(value: R|PositiveInt|): R|kotlin/Unit|
+
+        public final operator fun component1(): R|PositiveInt|
+
+        public final operator fun component2(): R|PositiveInt|
+
+        public final fun copy(first: R|PositiveInt| = this@R|/PositiveMutablePair|.R|/PositiveMutablePair.first|, second: R|PositiveInt| = this@R|/PositiveMutablePair|.R|/PositiveMutablePair.second|): R|PositiveMutablePair|
+
+    }
+    public final fun checkPositive(num: R|kotlin/Int|): R|kotlin/Boolean|
+        [R|Contract description]
+         <
+            Returns(TRUE) -> num satisfies [::isPositive]
+        >
+     {
+        ^checkPositive R|/isPositive|(R|<local>/num|)
+    }
+    public final fun foo(a: R|kotlin/Int|, b: R|kotlin/Int|): R|kotlin/Unit| {
+        when () {
+            R|/checkPositive|(R|<local>/a|) && R|/checkPositive|(R|<local>/b|) ->  {
+                lval pair2: R|PositiveMutablePair| = R|/PositiveMutablePair.PositiveMutablePair|(R|<local>/a|, R|<local>/b|)
+                R|/bar|(R|<local>/pair2|.R|/PositiveMutablePair.first|)
+                R|/bar|(R|<local>/pair2|.R|/PositiveMutablePair.second|)
+                R|<local>/pair2|.R|/PositiveMutablePair.first| = Int(-10)
+            }
+        }
+
+    }
+    public final fun bar(a: R|PositiveInt|): R|kotlin/Unit| {
+        R|kotlin/io/println|(R|<local>/a|)
+    }

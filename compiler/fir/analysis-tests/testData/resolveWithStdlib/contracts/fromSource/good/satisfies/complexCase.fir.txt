@@ -1,0 +1,34 @@
+FILE: complexCase.kt
+    public final fun isPositive(num: R|kotlin/Int|): R|kotlin/Boolean| {
+        ^isPositive CMP(>, R|<local>/num|.R|kotlin/Int.compareTo|(Int(0)))
+    }
+    public final fun isEven(num: R|kotlin/Int|): R|kotlin/Boolean| {
+        ^isEven ==(R|<local>/num|.R|kotlin/Int.rem|(Int(2)), Int(0))
+    }
+    public final contract fun myContract1(num: R|kotlin/Int|): R|kotlin/Unit|
+        [R|Contract description]
+         <
+            Returns(WILDCARD) -> num satisfies [::isPositive, ::isEven]
+        >
+    public final contract fun myContract2(block: R|() -> kotlin/Unit|): R|kotlin/Unit|
+        [R|Contract description]
+         <
+            CallsInPlace(block, EXACTLY_ONCE)
+        >
+    public final contract fun myContract(a: R|kotlin/Int|, b: R|() -> kotlin/Unit|): R|kotlin/Unit|
+        [R|Contract description]
+         <
+            Returns(WILDCARD) -> a satisfies [::isPositive, ::isEven]
+            CallsInPlace(b, EXACTLY_ONCE)
+        >
+    public final fun foo(x: R|kotlin/Int|, block: R|() -> kotlin/Unit|): R|kotlin/Unit|
+        [R|Contract description]
+         <
+            Returns(WILDCARD) -> x satisfies [::isPositive, ::isEven]
+            CallsInPlace(block, EXACTLY_ONCE)
+        >
+     {
+        R|kotlin/require|(R|/isPositive|(R|<local>/x|))
+        R|kotlin/require|(R|/isEven|(R|<local>/x|))
+        R|<local>/block|.R|SubstitutionOverride<kotlin/Function0.invoke: R|kotlin/Unit|>|()
+    }

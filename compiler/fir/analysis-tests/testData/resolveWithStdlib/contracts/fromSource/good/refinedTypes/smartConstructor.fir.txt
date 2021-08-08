@@ -1,0 +1,45 @@
+FILE: smartConstructor.kt
+    public final typealias PositiveInt = R|kotlin/Int| satisfies ::R|/isPositive|
+    public final fun isPositive(num: R|kotlin/Int|): R|kotlin/Boolean| {
+        ^isPositive CMP(>, R|<local>/num|.R|kotlin/Int.compareTo|(Int(0)))
+    }
+    public final data class PositivePair : R|kotlin/Any| {
+        public constructor(first: R|PositiveInt|, second: R|PositiveInt|): R|PositivePair| {
+            super<R|kotlin/Any|>()
+        }
+
+        public final val first: R|PositiveInt| = R|<local>/first|
+            public get(): R|PositiveInt|
+
+        public final val second: R|PositiveInt| = R|<local>/second|
+            public get(): R|PositiveInt|
+
+        public final operator fun component1(): R|PositiveInt|
+
+        public final operator fun component2(): R|PositiveInt|
+
+        public final fun copy(first: R|PositiveInt| = this@R|/PositivePair|.R|/PositivePair.first|, second: R|PositiveInt| = this@R|/PositivePair|.R|/PositivePair.second|): R|PositivePair|
+
+    }
+    public final fun checkPositive(num: R|kotlin/Int|): R|kotlin/Boolean|
+        [R|Contract description]
+         <
+            Returns(TRUE) -> num satisfies [::isPositive]
+        >
+     {
+        ^checkPositive R|/isPositive|(R|<local>/num|)
+    }
+    public final fun foo(a: R|kotlin/Int|, b: R|kotlin/Int|): R|kotlin/Unit| {
+        lval pair1: R|PositivePair| = R|/PositivePair.PositivePair|(R|<local>/a|, R|<local>/b|)
+        when () {
+            R|/checkPositive|(R|<local>/a|) && R|/checkPositive|(R|<local>/b|) ->  {
+                lval pair2: R|PositivePair| = R|/PositivePair.PositivePair|(R|<local>/a|, R|<local>/b|)
+                R|/bar|(R|<local>/pair2|.R|/PositivePair.first|)
+                R|/bar|(R|<local>/pair2|.R|/PositivePair.second|)
+            }
+        }
+
+    }
+    public final fun bar(a: R|PositiveInt|): R|kotlin/Unit| {
+        R|kotlin/io/println|(R|<local>/a|)
+    }

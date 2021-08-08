@@ -1,0 +1,47 @@
+FILE: refinedTypeAsReturnType.kt
+    public final typealias BoundedBy10 = R|kotlin/Int| satisfies [::R|/greaterThanMinus10|, ::R|/lessThan10|]
+    public final typealias BoundedBy100 = R|kotlin/Int| satisfies [::R|/greaterThanMinus100|, ::R|/lessThan100|]
+    public final fun lessThan10(num: R|kotlin/Int|): R|kotlin/Boolean| {
+        ^lessThan10 CMP(<, R|<local>/num|.R|kotlin/Int.compareTo|(Int(10)))
+    }
+    public final fun greaterThanMinus10(num: R|kotlin/Int|): R|kotlin/Boolean| {
+        ^greaterThanMinus10 CMP(>, R|<local>/num|.R|kotlin/Int.compareTo|(Int(-10)))
+    }
+    public final fun lessThan100(num: R|kotlin/Int|): R|kotlin/Boolean| {
+        ^lessThan100 CMP(<, R|<local>/num|.R|kotlin/Int.compareTo|(Int(100)))
+    }
+    public final fun greaterThanMinus100(num: R|kotlin/Int|): R|kotlin/Boolean| {
+        ^greaterThanMinus100 CMP(>, R|<local>/num|.R|kotlin/Int.compareTo|(Int(-100)))
+    }
+    public final fun ensureLessThan10(arg: R|kotlin/Int|): R|kotlin/Unit|
+        [R|Contract description]
+         <
+            Returns(WILDCARD) -> arg satisfies [::lessThan10]
+        >
+     {
+        ^ensureLessThan10 R|kotlin/require|(R|/lessThan10|(R|<local>/arg|))
+    }
+    public final fun ensureGreaterThanMinus10(arg: R|kotlin/Int|): R|kotlin/Unit|
+        [R|Contract description]
+         <
+            Returns(WILDCARD) -> arg satisfies [::greaterThanMinus10]
+        >
+     {
+        ^ensureGreaterThanMinus10 R|kotlin/require|(R|/greaterThanMinus10|(R|<local>/arg|))
+    }
+    public final fun foo(num: R|kotlin/Int|): R|kotlin/Unit| {
+        R|/ensureLessThan10|(R|<local>/num|)
+        R|/ensureGreaterThanMinus10|(R|<local>/num|)
+        lval increased: R|BoundedBy100| = R|/multiplyBy10|(R|<local>/num|)
+        R|/acceptBoundedBy100|(R|<local>/increased|)
+    }
+    public final fun bar(num: R|kotlin/Int|): R|kotlin/Unit| {
+        R|/ensureLessThan10|(R|<local>/num|)
+        lval increased: R|BoundedBy100| = R|/multiplyBy10|(R|<local>/num|)
+    }
+    public final fun multiplyBy10(num: R|BoundedBy10|): R|BoundedBy100| {
+        ^multiplyBy10 R|<local>/num|.R|kotlin/Int.times|(Int(10))
+    }
+    public final fun acceptBoundedBy100(num: R|BoundedBy100|): R|kotlin/Unit| {
+        R|kotlin/io/println|(R|<local>/num|)
+    }

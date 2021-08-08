@@ -1,0 +1,71 @@
+FILE: complexRefinedType.kt
+    public final typealias MyInt = R|kotlin/Int| satisfies [::R|/isPositive|, ::R|/isEven|, ::R|/isBounded|]
+    public final fun isPositive(a: R|kotlin/Int|): R|kotlin/Boolean| {
+        ^isPositive CMP(>, R|<local>/a|.R|kotlin/Int.compareTo|(Int(0)))
+    }
+    public final fun isEven(a: R|kotlin/Int|): R|kotlin/Boolean| {
+        ^isEven ==(R|<local>/a|.R|kotlin/Int.rem|(Int(2)), Int(0))
+    }
+    public final fun isBounded(a: R|kotlin/Int|): R|kotlin/Boolean| {
+        ^isBounded CMP(<, Int(-100).R|kotlin/Int.compareTo|(R|<local>/a|)) && CMP(<, R|<local>/a|.R|kotlin/Int.compareTo|(Int(100)))
+    }
+    public final contract fun myIntIfTrue(num: R|kotlin/Int|): R|kotlin/Unit|
+        [R|Contract description]
+         <
+            Returns(TRUE) -> num satisfies [::isPositive, ::isEven, ::isBounded]
+        >
+    public final fun checkMyInt(num: R|kotlin/Int|): R|kotlin/Boolean|
+        [R|Contract description]
+         <
+            Returns(TRUE) -> num satisfies [::isPositive, ::isEven, ::isBounded]
+        >
+     {
+        ^checkMyInt R|/isPositive|(R|<local>/num|) && R|/isEven|(R|<local>/num|) && R|/isBounded|(R|<local>/num|)
+    }
+    public final fun checkPositive(num: R|kotlin/Int|): R|kotlin/Boolean|
+        [R|Contract description]
+         <
+            Returns(TRUE) -> num satisfies [::isPositive]
+        >
+     {
+        ^checkPositive R|/isPositive|(R|<local>/num|)
+    }
+    public final fun checkEven(num: R|kotlin/Int|): R|kotlin/Boolean|
+        [R|Contract description]
+         <
+            Returns(TRUE) -> num satisfies [::isEven]
+        >
+     {
+        ^checkEven R|/isEven|(R|<local>/num|)
+    }
+    public final fun checkBounded(num: R|kotlin/Int|): R|kotlin/Boolean|
+        [R|Contract description]
+         <
+            Returns(TRUE) -> num satisfies [::isBounded]
+        >
+     {
+        ^checkBounded R|/isBounded|(R|<local>/num|)
+    }
+    public final fun foo(num: R|kotlin/Int|): R|kotlin/Unit| {
+        when () {
+            R|/checkMyInt|(R|<local>/num|) ->  {
+                R|/bar|(R|<local>/num|)
+            }
+        }
+
+        when () {
+            R|/checkPositive|(R|<local>/num|) && R|/checkEven|(R|<local>/num|) ->  {
+                R|/bar|(R|<local>/num|)
+                when () {
+                    R|/checkBounded|(R|<local>/num|) ->  {
+                        R|/bar|(R|<local>/num|)
+                    }
+                }
+
+            }
+        }
+
+    }
+    public final fun bar(a: R|MyInt|): R|kotlin/Unit| {
+        R|kotlin/io/println|(R|<local>/a|)
+    }

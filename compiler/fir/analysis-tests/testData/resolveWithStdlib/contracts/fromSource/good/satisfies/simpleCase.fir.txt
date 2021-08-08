@@ -1,0 +1,12 @@
+FILE: simpleCase.kt
+    public final fun isPositive(num: R|kotlin/Int|): R|kotlin/Boolean| {
+        ^isPositive CMP(>, R|<local>/num|.R|kotlin/Int.compareTo|(Int(0)))
+    }
+    public final fun foo(num: R|kotlin/Int|): R|kotlin/Unit|
+        [R|Contract description]
+         <
+            Returns(WILDCARD) -> num satisfies [::isPositive]
+        >
+     {
+        R|kotlin/require|(R|/isPositive|(R|<local>/num|))
+    }

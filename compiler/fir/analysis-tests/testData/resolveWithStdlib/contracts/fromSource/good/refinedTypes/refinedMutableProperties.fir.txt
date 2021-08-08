@@ -1,0 +1,33 @@
+FILE: refinedMutableProperties.kt
+    public final typealias PositiveInt = R|kotlin/Int| satisfies ::R|/isPositive|
+    public final fun isPositive(num: R|kotlin/Int|): R|kotlin/Boolean| {
+        ^isPositive CMP(>, R|<local>/num|.R|kotlin/Int.compareTo|(Int(0)))
+    }
+    public final class CustomPair : R|kotlin/Any| {
+        public final var first: R|PositiveInt|
+            public get(): R|PositiveInt|
+            public set(value: R|PositiveInt|): R|kotlin/Unit| {
+                this@R|/CustomPair|.F|/CustomPair.first| = R|<local>/value|.R|kotlin/Int.times|(Int(10))
+            }
+
+        public final var second: R|PositiveInt|
+            public get(): R|PositiveInt|
+            public set(value: R|PositiveInt|): R|kotlin/Unit| {
+                this@R|/CustomPair|.F|/CustomPair.second| = R|<local>/value|.R|kotlin/Int.times|(Int(20))
+            }
+
+        public constructor(first: R|PositiveInt|, second: R|PositiveInt|): R|CustomPair| {
+            super<R|kotlin/Any|>()
+            this@R|/CustomPair|.R|/CustomPair.first| = R|<local>/first|
+            this@R|/CustomPair|.R|/CustomPair.second| = R|<local>/second|
+        }
+
+    }
+    public final fun checkPositive(num: R|kotlin/Int|): R|kotlin/Boolean|
+        [R|Contract description]
+         <
+            Returns(TRUE) -> num satisfies [::isPositive]
+        >
+     {
+        ^checkPositive R|/isPositive|(R|<local>/num|)
+    }

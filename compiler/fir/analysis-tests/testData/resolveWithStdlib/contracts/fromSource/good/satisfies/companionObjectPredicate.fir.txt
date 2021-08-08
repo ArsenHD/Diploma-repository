@@ -1,0 +1,31 @@
+FILE: companionObjectPredicate.kt
+    public final class MyClass : R|kotlin/Any| {
+        public constructor(): R|MyClass| {
+            super<R|kotlin/Any|>()
+        }
+
+        public final companion object Companion : R|kotlin/Any| {
+            private constructor(): R|MyClass.Companion| {
+                super<R|kotlin/Any|>()
+            }
+
+            public final fun myFun(num: R|kotlin/Int|): R|kotlin/Boolean| {
+                ^myFun ==(R|<local>/num|, Int(0)) || ==(R|<local>/num|, Int(100))
+            }
+
+        }
+
+    }
+    public final contract fun myContract(arg: R|kotlin/Int|): R|kotlin/Unit|
+        [R|Contract description]
+         <
+            Returns(WILDCARD) -> arg satisfies [MyClass.Companion::myFun]
+        >
+    public final fun foo(a: R|kotlin/Int|): R|kotlin/Unit|
+        [R|Contract description]
+         <
+            Returns(WILDCARD) -> a satisfies [MyClass.Companion::myFun]
+        >
+     {
+        R|kotlin/require|(Q|MyClass|.R|/MyClass.Companion.myFun|(R|<local>/a|))
+    }

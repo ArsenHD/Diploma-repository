@@ -4752,6 +4752,52 @@ public class FirDiagnosticTestGenerated extends AbstractFirDiagnosticTest {
                     }
 
                     @Nested
+                    @TestMetadata("compiler/fir/analysis-tests/testData/resolveWithStdlib/contracts/fromSource/good/refinedTypes")
+                    @TestDataPath("$PROJECT_ROOT")
+                    public class RefinedTypes {
+                        @Test
+                        public void testAllFilesPresentInRefinedTypes() throws Exception {
+                            KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler/fir/analysis-tests/testData/resolveWithStdlib/contracts/fromSource/good/refinedTypes"), Pattern.compile("^([^.]+)\\.kt$"), null, true);
+                        }
+
+                        @Test
+                        @TestMetadata("complexRefinedType.kt")
+                        public void testComplexRefinedType() throws Exception {
+                            runTest("compiler/fir/analysis-tests/testData/resolveWithStdlib/contracts/fromSource/good/refinedTypes/complexRefinedType.kt");
+                        }
+
+                        @Test
+                        @TestMetadata("refinedMutableProperties.kt")
+                        public void testRefinedMutableProperties() throws Exception {
+                            runTest("compiler/fir/analysis-tests/testData/resolveWithStdlib/contracts/fromSource/good/refinedTypes/refinedMutableProperties.kt");
+                        }
+
+                        @Test
+                        @TestMetadata("refinedTypeAsReturnType.kt")
+                        public void testRefinedTypeAsReturnType() throws Exception {
+                            runTest("compiler/fir/analysis-tests/testData/resolveWithStdlib/contracts/fromSource/good/refinedTypes/refinedTypeAsReturnType.kt");
+                        }
+
+                        @Test
+                        @TestMetadata("safeSqrt.kt")
+                        public void testSafeSqrt() throws Exception {
+                            runTest("compiler/fir/analysis-tests/testData/resolveWithStdlib/contracts/fromSource/good/refinedTypes/safeSqrt.kt");
+                        }
+
+                        @Test
+                        @TestMetadata("smartConstructor.kt")
+                        public void testSmartConstructor() throws Exception {
+                            runTest("compiler/fir/analysis-tests/testData/resolveWithStdlib/contracts/fromSource/good/refinedTypes/smartConstructor.kt");
+                        }
+
+                        @Test
+                        @TestMetadata("smartConstructorWithVars.kt")
+                        public void testSmartConstructorWithVars() throws Exception {
+                            runTest("compiler/fir/analysis-tests/testData/resolveWithStdlib/contracts/fromSource/good/refinedTypes/smartConstructorWithVars.kt");
+                        }
+                    }
+
+                    @Nested
                     @TestMetadata("compiler/fir/analysis-tests/testData/resolveWithStdlib/contracts/fromSource/good/returnsImplies")
                     @TestDataPath("$PROJECT_ROOT")
                     public class ReturnsImplies {
@@ -4824,6 +4870,40 @@ public class FirDiagnosticTestGenerated extends AbstractFirDiagnosticTest {
                         @TestMetadata("typePredicate.kt")
                         public void testTypePredicate() throws Exception {
                             runTest("compiler/fir/analysis-tests/testData/resolveWithStdlib/contracts/fromSource/good/returnsImplies/typePredicate.kt");
+                        }
+                    }
+
+                    @Nested
+                    @TestMetadata("compiler/fir/analysis-tests/testData/resolveWithStdlib/contracts/fromSource/good/satisfies")
+                    @TestDataPath("$PROJECT_ROOT")
+                    public class Satisfies {
+                        @Test
+                        public void testAllFilesPresentInSatisfies() throws Exception {
+                            KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler/fir/analysis-tests/testData/resolveWithStdlib/contracts/fromSource/good/satisfies"), Pattern.compile("^([^.]+)\\.kt$"), null, true);
+                        }
+
+                        @Test
+                        @TestMetadata("companionObjectPredicate.kt")
+                        public void testCompanionObjectPredicate() throws Exception {
+                            runTest("compiler/fir/analysis-tests/testData/resolveWithStdlib/contracts/fromSource/good/satisfies/companionObjectPredicate.kt");
+                        }
+
+                        @Test
+                        @TestMetadata("complexCase.kt")
+                        public void testComplexCase() throws Exception {
+                            runTest("compiler/fir/analysis-tests/testData/resolveWithStdlib/contracts/fromSource/good/satisfies/complexCase.kt");
+                        }
+
+                        @Test
+                        @TestMetadata("multiplePredicates.kt")
+                        public void testMultiplePredicates() throws Exception {
+                            runTest("compiler/fir/analysis-tests/testData/resolveWithStdlib/contracts/fromSource/good/satisfies/multiplePredicates.kt");
+                        }
+
+                        @Test
+                        @TestMetadata("simpleCase.kt")
+                        public void testSimpleCase() throws Exception {
+                            runTest("compiler/fir/analysis-tests/testData/resolveWithStdlib/contracts/fromSource/good/satisfies/simpleCase.kt");
                         }
                     }
 

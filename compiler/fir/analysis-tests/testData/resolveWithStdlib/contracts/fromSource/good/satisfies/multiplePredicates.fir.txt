@@ -1,0 +1,20 @@
+FILE: multiplePredicates.kt
+    public final fun isPositive(num: R|kotlin/Int|): R|kotlin/Boolean| {
+        ^isPositive CMP(>, R|<local>/num|.R|kotlin/Int.compareTo|(Int(0)))
+    }
+    public final fun inRange(num: R|kotlin/Int|): R|kotlin/Boolean| {
+        ^inRange Int(-100).R|kotlin/Int.rangeTo|(Int(100)).R|kotlin/ranges/IntRange.contains|(R|<local>/num|)
+    }
+    public final fun isEven(num: R|kotlin/Int|): R|kotlin/Boolean| {
+        ^isEven ==(R|<local>/num|.R|kotlin/Int.rem|(Int(2)), Int(0))
+    }
+    public final fun foo(num: R|kotlin/Int|): R|kotlin/Unit|
+        [R|Contract description]
+         <
+            Returns(WILDCARD) -> num satisfies [::isPositive, ::inRange, ::isEven]
+        >
+     {
+        R|kotlin/require|(R|/isPositive|(R|<local>/num|))
+        R|kotlin/require|(R|/inRange|(R|<local>/num|))
+        R|kotlin/require|(R|/isEven|(R|<local>/num|))
+    }
