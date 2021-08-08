@@ -5,15 +5,6 @@
 
 package org.jetbrains.kotlin.fir.resolve.transformers
 
-import org.jetbrains.kotlin.fir.contracts.FirEffectDeclaration
-import org.jetbrains.kotlin.fir.contracts.FirRawContractDescription
-import org.jetbrains.kotlin.fir.contracts.FirResolvedContractDescription
-import org.jetbrains.kotlin.fir.contracts.builder.buildLegacyRawContractDescription
-import org.jetbrains.kotlin.fir.contracts.builder.buildResolvedContractDescription
-import org.jetbrains.kotlin.fir.contracts.description.ConeEffectDeclaration
-import org.jetbrains.kotlin.fir.contracts.toFirEffectDeclaration
-import org.jetbrains.kotlin.fir.declarations.FirContractDescriptionOwner
-import org.jetbrains.kotlin.fir.declarations.FirDeclarationOrigin
 import org.jetbrains.kotlin.fir.FirElement
 import org.jetbrains.kotlin.fir.FirFakeSourceElementKind
 import org.jetbrains.kotlin.fir.copyWithNewSourceKind
