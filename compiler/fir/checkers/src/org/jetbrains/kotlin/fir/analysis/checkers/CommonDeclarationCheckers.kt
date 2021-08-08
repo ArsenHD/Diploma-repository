@@ -54,6 +54,7 @@ object CommonDeclarationCheckers : DeclarationCheckers() {
             FirInitializerTypeMismatchChecker,
             FirDelegatedPropertyChecker,
             FirInlinePropertyChecker,
+            FirRefinedVarWithCustomSetterChecker
         )
 
     override val classCheckers: Set<FirClassChecker>

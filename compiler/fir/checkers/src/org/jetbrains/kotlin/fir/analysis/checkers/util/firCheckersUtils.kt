@@ -6,8 +6,14 @@
 package org.jetbrains.kotlin.fir.analysis.checkers.util
 
 import org.jetbrains.kotlin.fir.FirElement
+import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.analysis.checkers.context.CheckerContext
 import org.jetbrains.kotlin.fir.analysis.collectors.AbstractDiagnosticCollectorVisitor
+import org.jetbrains.kotlin.fir.declarations.FirRefinedType
+import org.jetbrains.kotlin.fir.symbols.SymbolInternals
+import org.jetbrains.kotlin.fir.types.FirTypeRef
+import org.jetbrains.kotlin.fir.types.coneType
+import org.jetbrains.kotlin.fir.types.toSymbol
 import org.jetbrains.kotlin.fir.visitors.FirVisitor
 
 fun FirElement.checkChildrenWithCustomVisitor(
@@ -20,4 +26,9 @@ fun FirElement.checkChildrenWithCustomVisitor(
         }
     }
     this.accept(collectingVisitor, null)
+}
+
+@OptIn(SymbolInternals::class)
+internal fun FirTypeRef.toRefinedType(session: FirSession): FirRefinedType? {
+    return coneType.toSymbol(session)?.fir as? FirRefinedType
 }

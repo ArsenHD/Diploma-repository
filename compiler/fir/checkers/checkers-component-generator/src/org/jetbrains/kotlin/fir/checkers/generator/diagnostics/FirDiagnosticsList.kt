@@ -826,6 +826,7 @@ object DIAGNOSTICS_LIST : DiagnosticList("FirErrors") {
             parameter<ConeKotlinType>("actualType")
         }
         val ACCESSOR_FOR_DELEGATED_PROPERTY by error<KtPropertyAccessor>()
+        val REFINED_VAR_WITH_CUSTOM_SETTER by error<KtProperty>()
     }
 
     val MPP_PROJECTS by object : DiagnosticGroup("Multi-platform projects") {
