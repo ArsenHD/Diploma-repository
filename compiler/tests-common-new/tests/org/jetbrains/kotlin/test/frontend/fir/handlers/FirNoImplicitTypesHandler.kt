@@ -6,6 +6,7 @@
 package org.jetbrains.kotlin.test.frontend.fir.handlers
 
 import org.jetbrains.kotlin.fir.FirElement
+import org.jetbrains.kotlin.fir.contracts.FirEffectDeclaration
 import org.jetbrains.kotlin.fir.render
 import org.jetbrains.kotlin.fir.types.FirImplicitTypeRef
 import org.jetbrains.kotlin.fir.visitors.FirDefaultVisitor
@@ -41,7 +42,9 @@ class FirNoImplicitTypesHandler(testServices: TestServices) : FirAnalysisHandler
         val detectedImplicitTypesParents = mutableListOf<FirElement>()
 
         override fun visitElement(element: FirElement, data: FirElement) {
-            element.acceptChildren(this, element)
+            if (element !is FirEffectDeclaration) {
+                element.acceptChildren(this, element)
+            }
         }
 
         override fun visitImplicitTypeRef(implicitTypeRef: FirImplicitTypeRef, data: FirElement) {
