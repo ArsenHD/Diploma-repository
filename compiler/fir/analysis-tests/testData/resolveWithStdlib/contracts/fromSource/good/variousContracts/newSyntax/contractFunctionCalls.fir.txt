@@ -1,10 +1,10 @@
 FILE: contractFunctionCalls.kt
-    public? final? fun notNull(arg: R|kotlin/Any?|): R|kotlin/Unit|
+    public final contract fun notNull(arg: R|kotlin/Any?|): R|kotlin/Unit|
         [R|Contract description]
          <
             Returns(WILDCARD) -> arg != null
         >
-    public? final? fun calledOnce(block: R|() -> kotlin/Unit|): R|kotlin/Unit|
+    public final contract fun calledOnce(block: R|() -> kotlin/Unit|): R|kotlin/Unit|
         [R|Contract description]
          <
             CallsInPlace(block, EXACTLY_ONCE)

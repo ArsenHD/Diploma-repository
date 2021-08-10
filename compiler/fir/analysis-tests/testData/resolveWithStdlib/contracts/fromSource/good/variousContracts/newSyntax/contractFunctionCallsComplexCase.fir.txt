@@ -11,18 +11,18 @@ FILE: contractFunctionCallsComplexCase.kt
         }
 
     }
-    public? final? fun notNull(a: R|A?|, b: R|A?|): R|kotlin/Unit|
+    public final contract fun notNull(a: R|A?|, b: R|A?|): R|kotlin/Unit|
         [R|Contract description]
          <
             Returns(WILDCARD) -> a != null
             Returns(WILDCARD) -> b != null
         >
-    public? final? fun argIsStringWhenReturnsTrue(arg: R|kotlin/Any?|): R|kotlin/Unit|
+    public final contract fun argIsStringWhenReturnsTrue(arg: R|kotlin/Any?|): R|kotlin/Unit|
         [R|Contract description]
          <
             Returns(TRUE) -> arg is kotlin/String
         >
-    public? final? fun myContract(a: R|A?|, b: R|A?|, arg: R|kotlin/Any?|, block: R|(A, A) -> kotlin/Int|): R|kotlin/Unit|
+    public final contract fun myContract(a: R|A?|, b: R|A?|, arg: R|kotlin/Any?|, block: R|(A, A) -> kotlin/Int|): R|kotlin/Unit|
         [R|Contract description]
          <
             Returns(WILDCARD) -> a != null

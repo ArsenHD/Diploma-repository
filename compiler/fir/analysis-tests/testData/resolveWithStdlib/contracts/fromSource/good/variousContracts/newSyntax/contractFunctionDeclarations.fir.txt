@@ -1,15 +1,15 @@
 FILE: contractFunctionDeclarations.kt
-    public? final? fun test1(arg: R|kotlin/Any?|): R|kotlin/Unit|
+    public final contract fun test1(arg: R|kotlin/Any?|): R|kotlin/Unit|
         [R|Contract description]
          <
             Returns(WILDCARD) -> arg != null
         >
-    public? final? fun test2(block: R|() -> kotlin/Unit|): R|kotlin/Unit|
+    public final contract fun test2(block: R|() -> kotlin/Unit|): R|kotlin/Unit|
         [R|Contract description]
          <
             CallsInPlace(block, EXACTLY_ONCE)
         >
-    public? final? fun test3(arg: R|kotlin/Any?|, block: R|() -> kotlin/Unit|): R|kotlin/Unit|
+    public final contract fun test3(arg: R|kotlin/Any?|, block: R|() -> kotlin/Unit|): R|kotlin/Unit|
         [R|Contract description]
          <
             Returns(WILDCARD) -> arg != null
